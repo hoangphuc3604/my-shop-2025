@@ -361,3 +361,14 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Configuration files with sensitive data
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+myshop.db
