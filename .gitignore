@@ -372,3 +372,7 @@ appsettings.*.json
 *.sqlite
 *.sqlite3
 myshop.db
+
+.env
+.env.local
+.env.*.local
