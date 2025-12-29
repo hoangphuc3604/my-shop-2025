@@ -1,19 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Window
-    x:Class="MyShop.MainWindow"
+<Page
+    x:Class="MyShop.Views.Pages.OrderPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:MyShop"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    Title="MyShop">
-
-    <Window.SystemBackdrop>
-        <MicaBackdrop />
-    </Window.SystemBackdrop>
+    mc:Ignorable="d">
 
     <Grid>
-
+        <TextBlock
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            FontSize="24"
+            Text="Order Page" />
     </Grid>
-</Window>
+</Page>
