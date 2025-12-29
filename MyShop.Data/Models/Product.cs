@@ -8,6 +8,9 @@ namespace MyShop.Data.Models
         public int ImportPrice { get; set; }
         public int Count { get; set; }
         public string Description { get; set; } = string.Empty;
+        public string ImageUrl1 { get; set; } = string.Empty;
+        public string ImageUrl2 { get; set; } = string.Empty;
+        public string ImageUrl3 { get; set; } = string.Empty;
         public int CategoryId { get; set; }
 
         // Navigation properties
