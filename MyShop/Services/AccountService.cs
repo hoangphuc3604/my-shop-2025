@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MyShop.Contracts;
 using MyShop.Data;
 using MyShop.Data.Models;
+using MyShop.Helpers;
 
 namespace MyShop.Services;
 
@@ -26,8 +27,7 @@ public class AccountService : IAccountService
             return null;
         }
 
-        // TODO: Implement password hashing comparison
-        if (user.PasswordHash == password)
+        if (PasswordHelper.VerifyPassword(password, user.PasswordHash))
         {
             user.LastLogin = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();

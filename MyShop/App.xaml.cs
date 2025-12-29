@@ -50,10 +50,15 @@ public partial class App : Application
         }
     }
 
-    protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         try
         {
+            if (_serviceProvider != null)
+            {
+                await DatabaseSeeder.SeedDemoDataAsync(_serviceProvider);
+            }
+
             _window = _serviceProvider?.GetService<LoginWindow>();
             _window?.Activate();
         }
