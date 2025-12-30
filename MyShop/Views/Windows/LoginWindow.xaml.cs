@@ -17,7 +17,6 @@ public sealed partial class LoginWindow : Window
         {
             root.DataContext = ViewModel;
         }
-        ViewModel.LoginSuccessful += OnLoginSuccessful;
     }
 
     private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
@@ -27,12 +26,5 @@ public sealed partial class LoginWindow : Window
             ViewModel.Password = passwordBox.Password;
             System.Diagnostics.Debug.WriteLine($"PasswordBox changed. Username='{ViewModel.Username}', PasswordLength={passwordBox.Password?.Length}");
         }
-    }
-
-    private void OnLoginSuccessful(object? sender, EventArgs e)
-    {
-        var mainWindow = App.Services.GetService(typeof(MainWindow)) as MainWindow;
-        mainWindow?.Activate();
-        Close();
     }
 }

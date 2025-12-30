@@ -29,7 +29,7 @@ public static class DatabaseSeeder
             {
                 Username = "admin",
                 Email = "admin@example.com",
-                PasswordHash = PasswordHelper.HashPassword("password"),
+                PasswordHash = PasswordHelper.HashPassword("123"),
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };

@@ -14,4 +14,9 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel()
     {
     }
+
+    public void NavigateToDashboard(NavigationViewItem dashboardItem)
+    {
+        SelectedMenuItem = dashboardItem;
+    }
 }

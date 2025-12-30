@@ -14,6 +14,7 @@ public partial class App : Application
 {
     private Window? _window;
     private IServiceProvider? _serviceProvider;
+    private INavigationService? _navigationService;
 
     public static IServiceProvider Services => ((App)Current)._serviceProvider!;
 
@@ -35,12 +36,13 @@ public partial class App : Application
             services.AddSingleton<IConfiguration>(configuration);
             services.AddDatabaseServices(configuration);
 
+            services.AddSingleton<INavigationService, NavigationService>();
             services.AddTransient<IAccountService, AccountService>();
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
 
-            services.AddTransient<MainWindow>();
-            services.AddTransient<MainViewModel>();
+            services.AddSingleton<MainWindow>();
+            services.AddSingleton<MainViewModel>();
 
             _serviceProvider = services.BuildServiceProvider();
         }
@@ -57,14 +59,46 @@ public partial class App : Application
             if (_serviceProvider != null)
             {
                 await DatabaseSeeder.SeedDemoDataAsync(_serviceProvider);
-            }
 
-            _window = _serviceProvider?.GetService<LoginWindow>();
-            _window?.Activate();
+                _navigationService = _serviceProvider.GetService<INavigationService>();
+                _navigationService!.NavigationRequested += OnNavigationRequested;
+
+                _window = _serviceProvider.GetService<LoginWindow>();
+                _window?.Activate();
+            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Launch error: {ex.Message}");
         }
+    }
+
+    private void OnNavigationRequested(object? sender, NavigationEventArgs e)
+    {
+        switch (e.Target)
+        {
+            case NavigationTarget.Main:
+                NavigateToMain();
+                break;
+            case NavigationTarget.Login:
+                NavigateToLogin();
+                break;
+        }
+    }
+
+    private void NavigateToMain()
+    {
+        var mainWindow = _serviceProvider?.GetService<MainWindow>();
+        mainWindow?.Activate();
+        _window?.Close();
+        _window = mainWindow;
+    }
+
+    private void NavigateToLogin()
+    {
+        var loginWindow = _serviceProvider?.GetService<LoginWindow>();
+        loginWindow?.Activate();
+        _window?.Close();
+        _window = loginWindow;
     }
 }

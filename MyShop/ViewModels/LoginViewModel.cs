@@ -10,6 +10,7 @@ namespace MyShop.ViewModels;
 public partial class LoginViewModel : ObservableObject
 {
     private readonly IAccountService _accountService;
+    private readonly INavigationService _navigationService;
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -23,11 +24,10 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private string _appVersion = "Version: v1.0.0";
 
-    public event EventHandler? LoginSuccessful;
-
-    public LoginViewModel(IAccountService accountService)
+    public LoginViewModel(IAccountService accountService, INavigationService navigationService)
     {
         _accountService = accountService;
+        _navigationService = navigationService;
     }
 
     [RelayCommand]
@@ -50,7 +50,7 @@ public partial class LoginViewModel : ObservableObject
             Debug.WriteLine(user is null ? "Login service returned null" : $"Login service returned user {user.Username}");
             if (user != null)
             {
-                LoginSuccessful?.Invoke(this, EventArgs.Empty);
+                _navigationService.NavigateToMain();
             }
             else
             {
