@@ -15,7 +15,7 @@ namespace MyShop.Views.Pages
     public sealed partial class ProductSelectionDialog : ContentDialog
     {
         private List<ProductSelection> _productSelections = new();
-        private MyShopDbContext? _dbContext;
+        private readonly MyShopDbContext _dbContext;
 
         public Dictionary<int, int> SelectedProducts { get; private set; } = new();
         public int TotalPrice { get; private set; }
@@ -23,23 +23,14 @@ namespace MyShop.Views.Pages
         public ProductSelectionDialog()
         {
             InitializeComponent();
+            _dbContext = (App.Services.GetService(typeof(MyShopDbContext)) as MyShopDbContext)!;
             PrimaryButtonClick += OnPrimaryButtonClick;
         }
 
-        public async Task LoadProductsAsync(MyShopDbContext? dbContext)
+        public async Task LoadProductsAsync(MyShopDbContext? dbContext = null)
         {
-            _dbContext = dbContext;
-            
             try
             {
-                if (_dbContext == null)
-                {
-                    var optionsBuilder = new DbContextOptionsBuilder<MyShopDbContext>();
-                    var connectionString = "Host=localhost;Port=5432;Database=myshop_db;Username=postgres;Password=password";
-                    optionsBuilder.UseNpgsql(connectionString);
-                    _dbContext = new MyShopDbContext(optionsBuilder.Options);
-                }
-
                 var products = await _dbContext.Products.ToListAsync();
                 _productSelections = products.Select(p => new ProductSelection 
                 { 

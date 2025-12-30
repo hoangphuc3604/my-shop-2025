@@ -10,11 +10,7 @@
     mc:Ignorable="d"
     Title="Select Products for Order"
     PrimaryButtonText="Create Order"
-    CloseButtonText="Cancel"
-    MinWidth="1600"
-    MinHeight="700"
-    MaxWidth="1800"
-    MaxHeight="900">
+    CloseButtonText="Cancel">
 
     <Grid Padding="20,20,20,0">
         <Grid.RowDefinitions>
@@ -53,13 +49,13 @@
                 <controls:DataGridTextColumn
                     Header="SKU"
                     Binding="{Binding Product.Sku}"
-                    Width="80"
+                    Width="100"
                     IsReadOnly="True"/>
 
                 <controls:DataGridTextColumn
                     Header="Product Name"
                     Binding="{Binding Product.Name}"
-                    Width="220"
+                    Width="250"
                     IsReadOnly="True"/>
 
                 <controls:DataGridTextColumn
