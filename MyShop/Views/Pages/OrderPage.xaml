@@ -67,7 +67,7 @@
                     Grid.Column="2"
                     Content="✕"
                     Click="OnResetFromDateClicked"
-                    Margin="5,0,0,0"
+                    Margin="1,0,0,0"
                     Width="32"
                     Height="32"
                     ToolTipService.ToolTip="Clear start date"
@@ -93,7 +93,7 @@
                     Grid.Column="5"
                     Content="✕"
                     Click="OnResetToDateClicked"
-                    Margin="5,0,0,0"
+                    Margin="1,0,0,0"
                     Width="32"
                     Height="32"
                     ToolTipService.ToolTip="Clear end date"
@@ -155,11 +155,12 @@
                         <!-- Actions Column -->
                         <controls:DataGridTemplateColumn
                             Header="Action"
-                            Width="150">
+                            Width="200">
                             <controls:DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="View" Height="32"/>
+                                        <Button Content="View" Height="32" Click="OnViewOrderClicked"/>
+                                        <Button Content="Edit" Height="32" Click="OnEditOrderClicked"/>
                                         <Button Content="Delete" Height="32" Click="OnDeleteOrderClicked"/>
                                     </StackPanel>
                                 </DataTemplate>

@@ -31,13 +31,17 @@ namespace MyShop.Views.Pages
         {
             try
             {
-                var products = await _dbContext.Products.ToListAsync();
+                var products = await _dbContext.Products
+                    .OrderBy(p => p.ProductId)
+                    .ToListAsync();
+                
                 _productSelections = products.Select(p => new ProductSelection 
                 { 
                     Product = p, 
                     Quantity = 0,
                     OnQuantityChangedCallback = UpdateSummary
                 }).ToList();
+                
                 ProductsDataGrid.ItemsSource = _productSelections;
             }
             catch (Exception ex)
@@ -59,8 +63,11 @@ namespace MyShop.Views.Pages
             
             var filteredProducts = string.IsNullOrEmpty(searchText)
                 ? _productSelections
-                : _productSelections.Where(p => p.Product.Name.ToLower().Contains(searchText) || 
-                                               p.Product.Sku.ToLower().Contains(searchText)).ToList();
+                : _productSelections
+                    .Where(p => p.Product.Name.ToLower().Contains(searchText) || 
+                               p.Product.Sku.ToLower().Contains(searchText))
+                    .OrderBy(p => p.Product.ProductId)
+                    .ToList();
 
             ProductsDataGrid.ItemsSource = filteredProducts;
         }

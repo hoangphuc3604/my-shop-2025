@@ -1,3 +1,4 @@
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Data;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text;
 
 namespace MyShop.Views.Pages
 {
@@ -43,19 +45,12 @@ namespace MyShop.Views.Pages
 
             try
             {
-                // Clear change tracker to ensure fresh data
                 _dbContext.ChangeTracker.Clear();
 
-                // Build the base query
                 var baseQuery = BuildBaseQuery();
-
-                // Get total count for pagination
                 _totalPages = await CalculateTotalPages(baseQuery);
-
-                // Validate current page
                 ValidateCurrentPage();
 
-                // Fetch paginated orders
                 var orders = await baseQuery
                     .Include(o => o.OrderItems)
                     .OrderBy(o => o.OrderId)
@@ -76,9 +71,6 @@ namespace MyShop.Views.Pages
             }
         }
 
-        /// <summary>
-        /// Builds the base query with date filters applied
-        /// </summary>
         private IQueryable<Order> BuildBaseQuery()
         {
             var query = _dbContext.Orders.AsNoTracking();
@@ -99,9 +91,6 @@ namespace MyShop.Views.Pages
             return query;
         }
 
-        /// <summary>
-        /// Gets the from date from the date picker
-        /// </summary>
         private DateTime? GetFromDate()
         {
             return FromDatePicker.Date.HasValue
@@ -109,30 +98,20 @@ namespace MyShop.Views.Pages
                 : null;
         }
 
-        /// <summary>
-        /// Gets the to date from the date picker (end of day)
-        /// </summary>
         private DateTime? GetToDate()
         {
             if (!ToDatePicker.Date.HasValue)
                 return null;
 
-            // Add 1 day to include the entire selected day
             return ToDatePicker.Date.Value.UtcDateTime.AddDays(1);
         }
 
-        /// <summary>
-        /// Calculates the total number of pages
-        /// </summary>
         private async Task<int> CalculateTotalPages(IQueryable<Order> query)
         {
             int totalOrders = await query.CountAsync();
             return totalOrders > 0 ? (int)Math.Ceiling((double)totalOrders / ORDERS_PER_PAGE) : 1;
         }
 
-        /// <summary>
-        /// Ensures the current page is within valid range
-        /// </summary>
         private void ValidateCurrentPage()
         {
             if (_currentPage > _totalPages)
@@ -151,7 +130,6 @@ namespace MyShop.Views.Pages
 
         private async Task ShowErrorDialogAsync(string message)
         {
-            // Close any existing dialog
             if (_currentDialog != null)
             {
                 _currentDialog.Hide();
@@ -172,7 +150,6 @@ namespace MyShop.Views.Pages
 
         private async Task ShowSuccessDialogAsync(string message)
         {
-            // Close any existing dialog
             if (_currentDialog != null)
             {
                 _currentDialog.Hide();
@@ -242,7 +219,6 @@ namespace MyShop.Views.Pages
                 _dbContext.Orders.Add(newOrder);
                 await _dbContext.SaveChangesAsync();
 
-                // Add order items
                 foreach (var kvp in selectedProducts)
                 {
                     var product = await _dbContext.Products.FindAsync(kvp.Key);
@@ -264,9 +240,7 @@ namespace MyShop.Views.Pages
 
                 await ShowSuccessDialogAsync($"Order #{newOrder.OrderId} created successfully with {selectedProducts.Count} product(s)!");
 
-                // Reset to first page and reload
                 _currentPage = 1;
-                await LoadOrdersAsync();
             }
             catch (Exception ex)
             {
@@ -275,6 +249,276 @@ namespace MyShop.Views.Pages
             finally
             {
                 _isLoading = false;
+                await LoadOrdersAsync();
+            }
+        }
+
+        private async void OnViewOrderClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            if (_isLoading)
+                return;
+
+            try
+            {
+                var button = sender as Button;
+                var order = button?.DataContext as Order;
+
+                if (order == null)
+                {
+                    await ShowErrorDialogAsync("Unable to identify order to view.");
+                    return;
+                }
+
+                await ShowOrderDetailsAsync(order);
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialogAsync($"Failed to view order: {ex.Message}");
+            }
+        }
+
+        private async Task ShowOrderDetailsAsync(Order order)
+        {
+            try
+            {
+                var fullOrder = await _dbContext.Orders
+                    .AsNoTracking()
+                    .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                    .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
+
+                if (fullOrder == null)
+                {
+                    await ShowErrorDialogAsync("Order not found.");
+                    return;
+                }
+
+                var orderDetailsControl = new OrderDetailsDialog();
+                orderDetailsControl.SetOrderData(fullOrder);
+
+                if (_currentDialog != null)
+                {
+                    _currentDialog.Hide();
+                    _currentDialog = null;
+                }
+
+                _currentDialog = new ContentDialog
+                {
+                    Title = $"Order #{fullOrder.OrderId} Details",
+                    Content = orderDetailsControl,
+                    CloseButtonText = "Close",
+                    XamlRoot = this.XamlRoot,
+                    MinWidth = 500,
+                    MaxWidth = 600
+                };
+
+                await _currentDialog.ShowAsync();
+                _currentDialog = null;
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialogAsync($"Failed to load order details: {ex.Message}");
+            }
+        }
+
+        private async void OnEditOrderClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            if (_isLoading)
+                return;
+
+            try
+            {
+                var button = sender as Button;
+                var order = button?.DataContext as Order;
+
+                if (order == null)
+                {
+                    await ShowErrorDialogAsync("Unable to identify order to edit.");
+                    return;
+                }
+
+                if (order.Status != "Created")
+                {
+                    await ShowErrorDialogAsync($"Cannot edit order with status '{order.Status}'. Only orders with 'Created' status can be edited.");
+                    return;
+                }
+
+                await ShowEditOrderDialogAsync(order);
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialogAsync($"Failed to edit order: {ex.Message}");
+            }
+        }
+
+        private async Task ShowEditOrderDialogAsync(Order order)
+        {
+            try
+            {
+                var fullOrder = await _dbContext.Orders
+                    .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                    .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
+
+                if (fullOrder == null)
+                {
+                    await ShowErrorDialogAsync("Order not found.");
+                    return;
+                }
+
+                var editControl = new EditOrderDialog();
+                editControl.SetOrderData(fullOrder);
+
+                if (_currentDialog != null)
+                {
+                    _currentDialog.Hide();
+                    _currentDialog = null;
+                }
+
+                _currentDialog = new ContentDialog
+                {
+                    Title = $"Edit Order #{fullOrder.OrderId}",
+                    Content = editControl,
+                    PrimaryButtonText = "Save Changes",
+                    CloseButtonText = "Cancel",
+                    XamlRoot = this.XamlRoot,
+                    MinWidth = 500,
+                    MaxWidth = 600
+                };
+
+                var result = await _currentDialog.ShowAsync();
+
+                if (result == ContentDialogResult.Primary)
+                {
+                    await UpdateOrderAsync(fullOrder, editControl);
+                }
+
+                _currentDialog = null;
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialogAsync($"Failed to open edit dialog: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Checks if all products in the order have sufficient inventory
+        /// </summary>
+        private async Task<(bool IsAvailable, string ErrorMessage)> CheckProductAvailabilityAsync(Order order)
+        {
+            var insufficientProducts = new List<string>();
+
+            foreach (var orderItem in order.OrderItems)
+            {
+                var product = await _dbContext.Products.FindAsync(orderItem.ProductId);
+                if (product == null)
+                {
+                    insufficientProducts.Add($"• {orderItem.ProductId} - Product not found");
+                    continue;
+                }
+
+                if (product.Count < orderItem.Quantity)
+                {
+                    insufficientProducts.Add($"• {product.Name} (SKU: {product.Sku})\n  Required: {orderItem.Quantity} units, Available: {product.Count} units");
+                }
+            }
+
+            if (insufficientProducts.Count > 0)
+            {
+                var errorMessage = new StringBuilder();
+                errorMessage.AppendLine("Cannot mark order as Paid. Insufficient inventory for the following products:\n");
+                foreach (var product in insufficientProducts)
+                {
+                    errorMessage.AppendLine(product);
+                }
+
+                return (false, errorMessage.ToString());
+            }
+
+            return (true, string.Empty);
+        }
+
+        private async Task UpdateOrderAsync(Order order, EditOrderDialog editControl)
+        {
+            _isLoading = true;
+            UpdatePaginationControls();
+
+            try
+            {
+                var newStatus = editControl.GetSelectedStatus();
+                var updatedQuantities = editControl.GetUpdatedQuantities();
+
+                var dbOrder = await _dbContext.Orders
+                    .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                    .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
+
+                if (dbOrder == null)
+                {
+                    await ShowErrorDialogAsync("Order not found.");
+                    return;
+                }
+
+                // Track if status changed to "Paid"
+                bool statusChangedToPaid = dbOrder.Status != "Paid" && newStatus == "Paid";
+
+                // If status is changing to "Paid", check inventory first
+                if (statusChangedToPaid)
+                {
+                    var (isAvailable, errorMessage) = await CheckProductAvailabilityAsync(dbOrder);
+                    if (!isAvailable)
+                    {
+                        await ShowErrorDialogAsync(errorMessage);
+                        return;
+                    }
+                }
+
+                // Update status
+                dbOrder.Status = newStatus;
+
+                // Update quantities
+                foreach (var kvp in updatedQuantities)
+                {
+                    var orderItem = dbOrder.OrderItems.FirstOrDefault(oi => oi.OrderItemId == kvp.Key);
+                    if (orderItem != null)
+                    {
+                        orderItem.Quantity = kvp.Value;
+                        orderItem.TotalPrice = (int)(orderItem.UnitSalePrice * kvp.Value);
+                    }
+                }
+
+                // Recalculate order total price
+                dbOrder.FinalPrice = dbOrder.OrderItems.Sum(oi => oi.TotalPrice);
+
+                // If status changed to "Paid", reduce product quantities
+                if (statusChangedToPaid)
+                {
+                    foreach (var orderItem in dbOrder.OrderItems)
+                    {
+                        var product = await _dbContext.Products.FindAsync(orderItem.ProductId);
+                        if (product != null)
+                        {
+                            product.Count -= orderItem.Quantity;
+                            if (product.Count < 0)
+                                product.Count = 0;
+                        }
+                    }
+                }
+
+                await _dbContext.SaveChangesAsync();
+
+                await ShowSuccessDialogAsync($"Order #{order.OrderId} updated successfully!");
+
+                _currentPage = 1;
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialogAsync($"Failed to update order: {ex.Message}");
+            }
+            finally
+            {
+                _isLoading = false;
+                await LoadOrdersAsync();
             }
         }
 
@@ -294,7 +538,6 @@ namespace MyShop.Views.Pages
                     return;
                 }
 
-                // Close any existing dialog
                 if (_currentDialog != null)
                 {
                     _currentDialog.Hide();
@@ -342,13 +585,10 @@ namespace MyShop.Views.Pages
 
                     await ShowSuccessDialogAsync($"Order #{orderId} deleted successfully!");
 
-                    // Reload with current page or adjust if necessary
                     if (_currentPage > _totalPages - 1)
                     {
                         _currentPage = Math.Max(1, _currentPage - 1);
                     }
-
-                    await LoadOrdersAsync();
                 }
                 else
                 {
@@ -362,6 +602,7 @@ namespace MyShop.Views.Pages
             finally
             {
                 _isLoading = false;
+                await LoadOrdersAsync();
             }
         }
 
@@ -397,15 +638,12 @@ namespace MyShop.Views.Pages
             if (_isLoading)
                 return;
 
-            // Clear date pickers
             FromDatePicker.Date = null;
             ToDatePicker.Date = null;
 
-            // Reset pagination
             _currentPage = 1;
             _totalPages = 1;
 
-            // Reload all orders
             await LoadOrdersAsync();
         }
 
@@ -414,13 +652,10 @@ namespace MyShop.Views.Pages
             if (_isLoading)
                 return;
 
-            // Clear from date
             FromDatePicker.Date = null;
 
-            // Reset to first page
             _currentPage = 1;
 
-            // Reload orders
             await LoadOrdersAsync();
         }
 
@@ -429,13 +664,10 @@ namespace MyShop.Views.Pages
             if (_isLoading)
                 return;
 
-            // Clear to date
             ToDatePicker.Date = null;
 
-            // Reset to first page
             _currentPage = 1;
 
-            // Reload orders
             await LoadOrdersAsync();
         }
     }
