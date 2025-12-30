@@ -36,6 +36,12 @@ public sealed partial class MainWindow : Window
     {
         if (args.SelectedItem is NavigationViewItem item)
         {
+            if (item == LogoutItem)
+            {
+                ViewModel.LogoutCommand.Execute(null);
+                return;
+            }
+
             ViewModel.SelectedMenuItem = item;
             NavigateToPage(item.Content?.ToString());
         }

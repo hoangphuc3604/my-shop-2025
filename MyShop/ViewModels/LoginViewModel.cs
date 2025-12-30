@@ -11,6 +11,7 @@ public partial class LoginViewModel : ObservableObject
 {
     private readonly IAccountService _accountService;
     private readonly INavigationService _navigationService;
+    private readonly ISessionService _sessionService;
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -24,10 +25,14 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private string _appVersion = "Version: v1.0.0";
 
-    public LoginViewModel(IAccountService accountService, INavigationService navigationService)
+    [ObservableProperty]
+    private bool _isRememberMe;
+
+    public LoginViewModel(IAccountService accountService, INavigationService navigationService, ISessionService sessionService)
     {
         _accountService = accountService;
         _navigationService = navigationService;
+        _sessionService = sessionService;
     }
 
     [RelayCommand]
@@ -50,6 +55,10 @@ public partial class LoginViewModel : ObservableObject
             Debug.WriteLine(user is null ? "Login service returned null" : $"Login service returned user {user.Username}");
             if (user != null)
             {
+                if (IsRememberMe)
+                {
+                    _sessionService.SaveSession(Username);
+                }
                 _navigationService.NavigateToMain();
             }
             else
@@ -63,5 +72,10 @@ public partial class LoginViewModel : ObservableObject
             Debug.WriteLine($"Login exception: {ex}");
             ErrorMessage = "An error occurred while attempting to sign in. Please try again.";
         }
+    }
+
+    public void ClearSession()
+    {
+        _sessionService.ClearSession();
     }
 }

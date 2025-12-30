@@ -37,12 +37,13 @@ public partial class App : Application
             services.AddDatabaseServices(configuration);
 
             services.AddSingleton<INavigationService, NavigationService>();
+            services.AddSingleton<ISessionService, SessionService>();
             services.AddTransient<IAccountService, AccountService>();
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
 
-            services.AddSingleton<MainWindow>();
-            services.AddSingleton<MainViewModel>();
+            services.AddTransient<MainWindow>();
+            services.AddTransient<MainViewModel>();
 
             _serviceProvider = services.BuildServiceProvider();
         }
@@ -63,7 +64,15 @@ public partial class App : Application
                 _navigationService = _serviceProvider.GetService<INavigationService>();
                 _navigationService!.NavigationRequested += OnNavigationRequested;
 
-                _window = _serviceProvider.GetService<LoginWindow>();
+                var sessionService = _serviceProvider.GetService<ISessionService>();
+                if (sessionService!.HasValidSession())
+                {
+                    _window = _serviceProvider.GetService<MainWindow>();
+                }
+                else
+                {
+                    _window = _serviceProvider.GetService<LoginWindow>();
+                }
                 _window?.Activate();
             }
         }

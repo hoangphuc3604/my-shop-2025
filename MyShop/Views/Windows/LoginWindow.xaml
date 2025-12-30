@@ -54,7 +54,7 @@
                     Margin="0,0,0,12" />
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="0,0,0,12">
-                    <CheckBox Content="Remember Me" IsChecked="False" Foreground="#444444" />
+                    <CheckBox Content="Remember Me" IsChecked="{Binding IsRememberMe, Mode=TwoWay}" Foreground="#444444" />
                 </StackPanel>
 
                 <Button
