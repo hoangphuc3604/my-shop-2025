@@ -60,6 +60,7 @@ namespace MyShop.Data
             {
                 entity.HasKey(e => e.OrderId);
                 entity.Property(e => e.CreatedTime).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Status).HasMaxLength(50);
                 entity.HasMany(e => e.OrderItems)
                     .WithOne(oi => oi.Order)
                     .HasForeignKey(oi => oi.OrderId)
@@ -83,6 +84,7 @@ namespace MyShop.Data
             // Seed data
             SeedCategories(modelBuilder);
             SeedProducts(modelBuilder);
+            SeedOrders(modelBuilder);
         }
 
         private void SeedCategories(ModelBuilder modelBuilder)
@@ -295,6 +297,64 @@ namespace MyShop.Data
             }
 
             modelBuilder.Entity<Product>().HasData(products);
+        }
+        private void SeedOrders(ModelBuilder modelBuilder)
+        {
+            var orders = new List<Order>();
+            var orderItems = new List<OrderItem>();
+            var orderItemId = 1;
+            var statuses = new[] { "Created", "Paid", "Cancelled", "Paid", "Created", "Paid", "Cancelled", "Paid", "Created", "Paid" };
+
+            for (int orderId = 1; orderId <= 10; orderId++)
+            {
+                var createdDate = DateTime.UtcNow.AddDays(-(11 - orderId));
+                var totalPrice = 0;
+                var itemsPerOrder = (orderId % 3) + 2;
+
+                for (int itemIndex = 0; itemIndex < itemsPerOrder; itemIndex++)
+                {
+                    var productId = ((orderId + itemIndex) % 66) + 1;
+                    var quantity = itemIndex + 1;
+
+                    int unitSalePrice;
+                    if (productId <= 22) // Electronics
+                    {
+                        unitSalePrice = (50000 + ((productId - 1) * 15000)) + (quantity * 5000);
+                    }
+                    else if (productId <= 44) // Clothing
+                    {
+                        unitSalePrice = (100000 + ((productId - 23) * 12000)) + (quantity * 8000);
+                    }
+                    else // Home & Garden
+                    {
+                        unitSalePrice = (75000 + ((productId - 45) * 20000)) + (quantity * 10000);
+                    }
+
+                    var itemTotal = unitSalePrice * quantity;
+                    totalPrice += itemTotal;
+
+                    orderItems.Add(new OrderItem
+                    {
+                        OrderItemId = orderItemId++,
+                        OrderId = orderId,
+                        ProductId = productId,
+                        Quantity = quantity,
+                        UnitSalePrice = unitSalePrice,
+                        TotalPrice = itemTotal
+                    });
+                }
+
+                orders.Add(new Order
+                {
+                    OrderId = orderId,
+                    CreatedTime = createdDate,
+                    FinalPrice = totalPrice,
+                    Status = statuses[orderId - 1]
+                });
+            }
+
+            modelBuilder.Entity<Order>().HasData(orders);
+            modelBuilder.Entity<OrderItem>().HasData(orderItems);
         }
     }
 }

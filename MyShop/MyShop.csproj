@@ -12,6 +12,14 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Views\Pages\EditOrderDialog.xaml" />
+    <None Remove="Views\Pages\OrderDetailsDialog.xaml" />
+    <None Remove="Views\Pages\ProductSelectionDialog.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Remove="Views\OrdersPage.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -59,6 +67,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MyShop.Data\MyShop.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="Views\Pages\OrderDetailsDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Update="Views\Pages\EditOrderDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <None Update="Views\Pages\OrdersPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
   </ItemGroup>
 
   <!--

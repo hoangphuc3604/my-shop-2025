@@ -2,6 +2,7 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using MyShop.ViewModels;
+using Windows.Graphics; // Add this using directive at the top of the file
 
 namespace MyShop.Views.Windows;
 
@@ -13,6 +14,10 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         ViewModel = viewModel;
+        
+        // Set window size
+        this.Title = "MyShop";
+        this.AppWindow.ResizeClient(new SizeInt32(1440, 750));
     }
 
     private void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
