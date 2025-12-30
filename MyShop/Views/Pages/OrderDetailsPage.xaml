@@ -1,0 +1,146 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="MyShop.Views.Pages.OrderDetailsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:converters="using:MyShop.Converters"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid RowSpacing="0" ColumnSpacing="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Back Button Header -->
+        <Border
+            Grid.Row="0"
+            Padding="20,12,20,12"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{ThemeResource ControlElevationBorderBrush}"
+            Background="{ThemeResource SystemChromeLowColor}">
+            <Button
+                Content="← Back"
+                Click="OnBackClicked"
+                Style="{StaticResource TextBlockButtonStyle}"/>
+        </Border>
+
+        <!-- Page Title -->
+        <Border
+            Grid.Row="1"
+            Padding="20,12,20,12"
+            Background="{ThemeResource SystemChromeLowColor}">
+            <TextBlock
+                Style="{StaticResource HeaderTextBlockStyle}">
+                <Run Text="Order #"/>
+                <Run Text="{Binding CurrentOrder.OrderId}"/>
+                <Run Text=" Details"/>
+            </TextBlock>
+        </Border>
+
+        <!-- Content -->
+        <ScrollViewer
+            Grid.Row="2"
+            VerticalScrollBarVisibility="Auto"
+            Padding="20">
+            <StackPanel Spacing="15">
+                <!-- Header Info -->
+                <StackPanel Spacing="6">
+                    <TextBlock
+                        FontSize="14"
+                        FontWeight="SemiBold">
+                        <Run Text="Order ID: "/>
+                        <Run Text="{Binding CurrentOrder.OrderId}"/>
+                    </TextBlock>
+                    <TextBlock
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorSecondary}">
+                        <Run Text="Status: "/>
+                        <Run Text="{Binding CurrentOrder.Status}"/>
+                    </TextBlock>
+                    <TextBlock
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorSecondary}">
+                        <Run Text="Created: "/>
+                        <Run Text="{Binding CurrentOrder.CreatedTime}"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Items Label -->
+                <TextBlock
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Text="Items:"/>
+
+                <!-- Items List -->
+                <ItemsControl ItemsSource="{Binding OrderItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border
+                                Padding="12"
+                                BorderThickness="1"
+                                BorderBrush="{ThemeResource ControlElevationBorderBrush}"
+                                CornerRadius="4"
+                                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                Margin="0,0,0,10">
+                                <StackPanel Spacing="5">
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="SemiBold">
+                                        <Run Text="• "/>
+                                        <Run Text="{Binding Product.Name}"/>
+                                        <Run Text=" (ID: "/>
+                                        <Run Text="{Binding ProductId}"/>
+                                        <Run Text=")"/>
+                                    </TextBlock>
+                                    <TextBlock
+                                        FontSize="11"
+                                        Foreground="{ThemeResource TextFillColorSecondary}">
+                                        <Run Text="Quantity: "/>
+                                        <Run Text="{Binding Quantity}"/>
+                                    </TextBlock>
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}">
+                                        <Run Text="Total: "/>
+                                        <Run Text="{Binding TotalPrice, Converter={StaticResource PriceConverter}}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Empty Items Message -->
+                <TextBlock
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorDisabled}"
+                    Text="No items in this order."
+                    Visibility="{Binding OrderItems.Count, Converter={StaticResource CollectionEmptyVisibilityConverter}}"/>
+
+                <!-- Total Price Footer -->
+                <StackPanel
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="12"
+                    Margin="0,20,0,0">
+                    <TextBlock
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        VerticalAlignment="Center"
+                        Text="Total Price:"/>
+                    <TextBlock
+                        FontSize="16"
+                        FontWeight="Bold"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                        Text="{Binding CurrentOrder.FinalPrice, Converter={StaticResource PriceConverter}}"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>
