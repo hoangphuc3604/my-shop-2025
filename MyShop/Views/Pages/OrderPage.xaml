@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:converters="using:MyShop.Converters"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
@@ -137,7 +138,7 @@
                         <!-- Total Amount Column -->
                         <controls:DataGridTextColumn
                             Header="Total Price (₫)"
-                            Binding="{Binding FinalPrice}"
+                            Binding="{Binding FinalPrice, Converter={StaticResource PriceConverter}}"
                             Width="140"/>
 
                         <!-- Status Column -->
