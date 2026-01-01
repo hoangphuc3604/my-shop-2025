@@ -1,9 +1,8 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using MyShop.Data;
+using MyShop.Contracts;
 using MyShop.Data.Models;
-using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -15,19 +14,23 @@ namespace MyShop.Views.Pages
 {
     public sealed partial class AddOrderPage : Page
     {
-        private MyShopDbContext _dbContext;
+        private readonly IOrderService _orderService;
+        private readonly IProductService _productService;
         private List<ProductSelection> _productSelections = new();
+        private bool _isLoading = false;
+        private ContentDialog? _currentDialog;
 
         public AddOrderPage()
         {
             this.InitializeComponent();
-            _dbContext = (App.Services.GetService(typeof(MyShopDbContext)) as MyShopDbContext)!;
+            _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
+            _productService = (App.Services.GetService(typeof(IProductService)) as IProductService)!;
         }
 
-        protected override async void OnNavigatedTo(NavigationEventArgs e)
+        protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            
+
             // Only load products if navigating forward, not when going back
             if (e.NavigationMode != NavigationMode.Back)
             {
@@ -37,18 +40,25 @@ namespace MyShop.Views.Pages
 
         private async Task LoadProductsAsync()
         {
+            if (_isLoading)
+                return;
+
+            _isLoading = true;
+
             try
             {
-                var products = await _dbContext.Products
-                    .OrderBy(p => p.ProductId)
-                    .ToListAsync();
+                var token = GetAuthToken();
+                var products = await _productService.GetProductsAsync(token);
 
-                _productSelections = products.Select(p => new ProductSelection
-                {
-                    Product = p,
-                    Quantity = 0,
-                    OnQuantityChangedCallback = UpdateSummary
-                }).ToList();
+                _productSelections = products
+                    .OrderBy(p => p.ProductId)
+                    .Select(p => new ProductSelection
+                    {
+                        Product = p,
+                        Quantity = 0,
+                        OnQuantityChangedCallback = UpdateSummary
+                    })
+                    .ToList();
 
                 ProductsDataGrid.ItemsSource = _productSelections;
                 UpdateSummary();
@@ -56,6 +66,10 @@ namespace MyShop.Views.Pages
             catch (Exception ex)
             {
                 await ShowErrorAsync($"Failed to load products: {ex.Message}");
+            }
+            finally
+            {
+                _isLoading = false;
             }
         }
 
@@ -97,9 +111,12 @@ namespace MyShop.Views.Pages
 
         private async void OnCreateOrderClicked(object sender, RoutedEventArgs e)
         {
+            if (_isLoading)
+                return;
+
             var selectedProducts = _productSelections
                 .Where(s => s.Quantity > 0)
-                .ToDictionary(s => s.Product.ProductId, s => s.Quantity);
+                .ToList();
 
             if (selectedProducts.Count == 0)
             {
@@ -107,56 +124,61 @@ namespace MyShop.Views.Pages
                 return;
             }
 
-            var totalPrice = _productSelections.Where(s => s.Quantity > 0).Sum(s => s.TotalPrice);
+            await CreateOrderAsync(selectedProducts);
+        }
+
+        private async Task CreateOrderAsync(List<ProductSelection> selectedProducts)
+        {
+            _isLoading = true;
 
             try
             {
-                var newOrder = new Order
+                var token = GetAuthToken();
+
+                // Build order items from selected products
+                var orderItems = selectedProducts
+                    .Select(s => new OrderItemInput
+                    {
+                        ProductId = s.Product.ProductId,
+                        Quantity = s.Quantity
+                    })
+                    .ToList();
+
+                var createOrderInput = new CreateOrderInput
                 {
-                    CreatedTime = DateTime.UtcNow,
-                    FinalPrice = totalPrice,
-                    Status = "Created"
+                    OrderItems = orderItems
                 };
 
-                _dbContext.Orders.Add(newOrder);
-                await _dbContext.SaveChangesAsync();
+                // Create order via GraphQL API
+                var newOrder = await _orderService.CreateOrderAsync(createOrderInput, token);
 
-                foreach (var kvp in selectedProducts)
+                if (newOrder != null)
                 {
-                    var product = await _dbContext.Products.FindAsync(kvp.Key);
-                    if (product != null)
+                    await ShowSuccessAsync($"Order #{newOrder.OrderId} created successfully with {selectedProducts.Count} product(s)!");
+
+                    // Navigate back
+                    if (Frame.CanGoBack)
                     {
-                        var orderItem = new OrderItem
-                        {
-                            OrderId = newOrder.OrderId,
-                            ProductId = kvp.Key,
-                            Quantity = kvp.Value,
-                            UnitSalePrice = product.ImportPrice,
-                            TotalPrice = product.ImportPrice * kvp.Value
-                        };
-                        _dbContext.OrderItems.Add(orderItem);
+                        Frame.GoBack();
                     }
                 }
-
-                await _dbContext.SaveChangesAsync();
-
-                await ShowSuccessAsync($"Order #{newOrder.OrderId} created successfully with {selectedProducts.Count} product(s)!");
-
-                // Navigate back WITHOUT triggering reload (NavigationMode.Back will skip reload in OrderPage)
-                if (Frame.CanGoBack)
+                else
                 {
-                    Frame.GoBack();
+                    await ShowErrorAsync("Failed to create order. Please try again.");
                 }
             }
             catch (Exception ex)
             {
                 await ShowErrorAsync($"Failed to create order: {ex.Message}");
             }
+            finally
+            {
+                _isLoading = false;
+            }
         }
 
         private void OnBackClicked(object sender, RoutedEventArgs e)
         {
-            // Just navigate back - OrderPage won't reload due to NavigationMode.Back check
             if (Frame.CanGoBack)
             {
                 Frame.GoBack();
@@ -165,7 +187,13 @@ namespace MyShop.Views.Pages
 
         private async Task ShowErrorAsync(string message)
         {
-            var dialog = new ContentDialog
+            if (_currentDialog != null)
+            {
+                _currentDialog.Hide();
+                _currentDialog = null;
+            }
+
+            _currentDialog = new ContentDialog
             {
                 Title = "Error",
                 Content = message,
@@ -173,12 +201,19 @@ namespace MyShop.Views.Pages
                 XamlRoot = this.XamlRoot
             };
 
-            await dialog.ShowAsync();
+            await _currentDialog.ShowAsync();
+            _currentDialog = null;
         }
 
         private async Task ShowSuccessAsync(string message)
         {
-            var dialog = new ContentDialog
+            if (_currentDialog != null)
+            {
+                _currentDialog.Hide();
+                _currentDialog = null;
+            }
+
+            _currentDialog = new ContentDialog
             {
                 Title = "Success",
                 Content = message,
@@ -186,7 +221,26 @@ namespace MyShop.Views.Pages
                 XamlRoot = this.XamlRoot
             };
 
-            await dialog.ShowAsync();
+            await _currentDialog.ShowAsync();
+            _currentDialog = null;
+        }
+
+        private string? GetAuthToken()
+        {
+            // Get token from session storage
+            var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
+            var token = sessionService?.GetAuthToken();
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                System.Diagnostics.Debug.WriteLine("[ADD_ORDER_PAGE] ✗ No authentication token available");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[ADD_ORDER_PAGE] ✓ Authentication token retrieved");
+            }
+            
+            return token;
         }
     }
 

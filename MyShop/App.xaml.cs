@@ -5,8 +5,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using MyShop.Contracts;
 using MyShop.Services;
+using MyShop.Services.GraphQL;
 using MyShop.Views.Windows;
 using MyShop.ViewModels;
+using System.Diagnostics;
 
 namespace MyShop;
 
@@ -34,14 +36,21 @@ public partial class App : Application
 
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
-            services.AddDatabaseServices(configuration);
 
+            // GraphQL Client and API Services
+            var graphqlEndpoint = configuration["GraphQL:Endpoint"] ?? "http://localhost:4000";
+            services.AddSingleton(new GraphQLClient(graphqlEndpoint));
+            services.AddSingleton<IOrderService, OrderService>();
+            services.AddSingleton<IProductService, ProductService>();
+            services.AddSingleton<IAccountService, AuthenticationService>();
+
+            // Navigation and Session Services
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<ISessionService, SessionService>();
-            services.AddTransient<IAccountService, AccountService>();
+
+            // ViewModels and Views
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
-
             services.AddTransient<MainWindow>();
             services.AddTransient<MainViewModel>();
 
@@ -59,18 +68,32 @@ public partial class App : Application
         {
             if (_serviceProvider != null)
             {
-                await DatabaseSeeder.SeedDemoDataAsync(_serviceProvider);
+                // Test GraphQL connection
+                var graphqlEndpoint = _serviceProvider.GetService<IConfiguration>()?["GraphQL:Endpoint"] 
+                    ?? "http://localhost:4000";
+                Debug.WriteLine("[APP] Testing GraphQL connection...");
+                var isConnected = await GraphQLConnectionTest.TestConnectionAsync(graphqlEndpoint);
+                
+                if (!isConnected)
+                {
+                    Debug.WriteLine("[APP] WARNING: Cannot connect to GraphQL backend!");
+                    Debug.WriteLine("[APP] Please ensure the backend server is running");
+                }
 
                 _navigationService = _serviceProvider.GetService<INavigationService>();
                 _navigationService!.NavigationRequested += OnNavigationRequested;
 
                 var sessionService = _serviceProvider.GetService<ISessionService>();
-                if (sessionService!.HasValidSession())
+                
+                // Check if user has valid session and token
+                if (sessionService!.HasValidSession() && sessionService.HasValidToken())
                 {
+                    Debug.WriteLine("[APP] ✓ Valid session and token found, loading main window");
                     _window = _serviceProvider.GetService<MainWindow>();
                 }
                 else
                 {
+                    Debug.WriteLine("[APP] No valid session, showing login");
                     _window = _serviceProvider.GetService<LoginWindow>();
                 }
                 _window?.Activate();
@@ -78,7 +101,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Launch error: {ex.Message}");
+            Debug.WriteLine($"[APP] Launch error: {ex.Message}");
+            Debug.WriteLine($"[APP] Stack trace: {ex.StackTrace}");
         }
     }
 

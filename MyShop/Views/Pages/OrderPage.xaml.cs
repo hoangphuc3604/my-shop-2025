@@ -1,20 +1,19 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using MyShop.Data;
+using MyShop.Contracts;
 using MyShop.Data.Models;
-using Microsoft.EntityFrameworkCore;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Diagnostics;
 
 namespace MyShop.Views.Pages
 {
     public sealed partial class OrderPage : Page
     {
-        private MyShopDbContext _dbContext;
+        private readonly IOrderService _orderService;
         private int _currentPage = 1;
         private int _totalPages = 1;
         private const int ORDERS_PER_PAGE = 10;
@@ -26,15 +25,14 @@ namespace MyShop.Views.Pages
         public OrderPage()
         {
             this.InitializeComponent();
-            _dbContext = (App.Services.GetService(typeof(MyShopDbContext)) as MyShopDbContext)!;
+            _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
             _cachedOrders = new ObservableCollection<Order>();
         }
 
-        protected override async void OnNavigatedTo(NavigationEventArgs e)
-        {
+        protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        {   
             base.OnNavigatedTo(e);
             
-            // Load data only on first navigation, or if navigating forward (not back)
             if (!_dataLoaded || e.NavigationMode != NavigationMode.Back)
             {
                 await LoadOrdersAsync();
@@ -42,35 +40,31 @@ namespace MyShop.Views.Pages
             }
             else
             {
-                // Restore cached data when navigating back
                 OrdersDataGrid.ItemsSource = _cachedOrders;
             }
         }
 
-        /// <summary>
-        /// Loads orders based on current filters and pagination settings
-        /// </summary>
         private async Task LoadOrdersAsync()
         {
             if (_isLoading)
                 return;
 
             _isLoading = true;
+            UpdatePaginationControls();
 
             try
             {
-                _dbContext.ChangeTracker.Clear();
+                var fromDate = GetFromDate();
+                var toDate = GetToDate();
+                var token = GetAuthToken();
 
-                var baseQuery = BuildBaseQuery();
-                _totalPages = await CalculateTotalPages(baseQuery);
+                // Get total count
+                var totalCount = await _orderService.GetTotalOrderCountAsync(fromDate, toDate, token);
+                _totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / ORDERS_PER_PAGE) : 1;
                 ValidateCurrentPage();
 
-                var orders = await baseQuery
-                    .Include(o => o.OrderItems)
-                    .OrderBy(o => o.OrderId)
-                    .Skip((_currentPage - 1) * ORDERS_PER_PAGE)
-                    .Take(ORDERS_PER_PAGE)
-                    .ToListAsync();
+                // Get orders for current page
+                var orders = await _orderService.GetOrdersAsync(_currentPage, ORDERS_PER_PAGE, fromDate, toDate, token);
 
                 _cachedOrders.Clear();
                 foreach (var order in orders)
@@ -91,26 +85,6 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private IQueryable<Order> BuildBaseQuery()
-        {
-            var query = _dbContext.Orders.AsNoTracking();
-
-            var fromDate = GetFromDate();
-            var toDate = GetToDate();
-
-            if (fromDate.HasValue)
-            {
-                query = query.Where(o => o.CreatedTime >= fromDate.Value);
-            }
-
-            if (toDate.HasValue)
-            {
-                query = query.Where(o => o.CreatedTime < toDate.Value);
-            }
-
-            return query;
-        }
-
         private DateTime? GetFromDate()
         {
             return FromDatePicker.Date.HasValue
@@ -126,10 +100,22 @@ namespace MyShop.Views.Pages
             return ToDatePicker.Date.Value.UtcDateTime.AddDays(1);
         }
 
-        private async Task<int> CalculateTotalPages(IQueryable<Order> query)
+        private string? GetAuthToken()
         {
-            int totalOrders = await query.CountAsync();
-            return totalOrders > 0 ? (int)Math.Ceiling((double)totalOrders / ORDERS_PER_PAGE) : 1;
+            // Get token from session storage
+            var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
+            var token = sessionService?.GetAuthToken();
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                Debug.WriteLine("[ORDER_PAGE] ✗ No authentication token available");
+            }
+            else
+            {
+                Debug.WriteLine("[ORDER_PAGE] ✓ Authentication token retrieved");
+            }
+            
+            return token;
         }
 
         private void ValidateCurrentPage()
@@ -188,7 +174,7 @@ namespace MyShop.Views.Pages
             _currentDialog = null;
         }
 
-        private async void OnAddOrderClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnAddOrderClicked(object sender, RoutedEventArgs e)
         {
             if (_isLoading)
                 return;
@@ -196,7 +182,7 @@ namespace MyShop.Views.Pages
             Frame.Navigate(typeof(AddOrderPage));
         }
 
-        private async void OnViewOrderClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnViewOrderClicked(object sender, RoutedEventArgs e)
         {
             if (_isLoading)
                 return;
@@ -220,7 +206,7 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private async void OnEditOrderClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnEditOrderClicked(object sender, RoutedEventArgs e)
         {
             if (_isLoading)
                 return;
@@ -250,7 +236,7 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private async void OnDeleteOrderClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnDeleteOrderClicked(object sender, RoutedEventArgs e)
         {
             if (_isLoading)
                 return;
@@ -302,15 +288,11 @@ namespace MyShop.Views.Pages
 
             try
             {
-                var orderToDelete = await _dbContext.Orders
-                    .Include(o => o.OrderItems)
-                    .FirstOrDefaultAsync(o => o.OrderId == orderId);
+                var token = GetAuthToken();
+                var success = await _orderService.DeleteOrderAsync(orderId, token);
 
-                if (orderToDelete != null)
+                if (success)
                 {
-                    _dbContext.Orders.Remove(orderToDelete);
-                    await _dbContext.SaveChangesAsync();
-
                     await ShowSuccessDialogAsync($"Order #{orderId} deleted successfully!");
 
                     if (_currentPage > _totalPages - 1)
@@ -322,7 +304,7 @@ namespace MyShop.Views.Pages
                 }
                 else
                 {
-                    await ShowErrorDialogAsync("Order not found.");
+                    await ShowErrorDialogAsync("Failed to delete order.");
                 }
             }
             catch (Exception ex)
@@ -335,7 +317,7 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private async void OnPreviousPageClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnPreviousPageClicked(object sender, RoutedEventArgs e)
         {
             if (_currentPage > 1 && !_isLoading)
             {
@@ -344,7 +326,7 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private async void OnNextPageClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnNextPageClicked(object sender, RoutedEventArgs e)
         {
             if (_currentPage < _totalPages && !_isLoading)
             {
@@ -353,7 +335,7 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private async void OnDateRangeChanged(object sender, Microsoft.UI.Xaml.Controls.CalendarDatePickerDateChangedEventArgs e)
+        private async void OnDateRangeChanged(Microsoft.UI.Xaml.Controls.CalendarDatePicker sender, Microsoft.UI.Xaml.Controls.CalendarDatePickerDateChangedEventArgs e)
         {
             if (!_isLoading)
             {
@@ -362,7 +344,7 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private async void OnClearFilterClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnClearFilterClicked(object sender, RoutedEventArgs e)
         {
             if (_isLoading)
                 return;
@@ -376,25 +358,23 @@ namespace MyShop.Views.Pages
             await LoadOrdersAsync();
         }
 
-        private async void OnResetFromDateClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnResetFromDateClicked(object sender, RoutedEventArgs e)
         {
             if (_isLoading)
                 return;
 
             FromDatePicker.Date = null;
-
             _currentPage = 1;
 
             await LoadOrdersAsync();
         }
 
-        private async void OnResetToDateClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void OnResetToDateClicked(object sender, RoutedEventArgs e)
         {
             if (_isLoading)
                 return;
 
             ToDatePicker.Date = null;
-
             _currentPage = 1;
 
             await LoadOrdersAsync();

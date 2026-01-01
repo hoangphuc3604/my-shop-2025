@@ -1,25 +1,25 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using MyShop.Data;
+using MyShop.Contracts;
 using MyShop.Data.Models;
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace MyShop.Views.Pages
 {
     public sealed partial class EditOrderPage : Page, INotifyPropertyChanged
     {
-        private MyShopDbContext _dbContext;
+        private readonly IOrderService _orderService;
         private Order? _currentOrder;
         private string _selectedStatus = "Created";
         private ObservableCollection<EditableOrderItem> _orderItems;
+        private bool _isLoading = false;
+        private ContentDialog? _currentDialog;
 
         public Order? CurrentOrder
         {
@@ -44,12 +44,12 @@ namespace MyShop.Views.Pages
         public EditOrderPage()
         {
             this.InitializeComponent();
-            _dbContext = (App.Services.GetService(typeof(MyShopDbContext)) as MyShopDbContext)!;
+            _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
             _orderItems = new ObservableCollection<EditableOrderItem>();
             this.DataContext = this;
         }
 
-        protected override async void OnNavigatedTo(NavigationEventArgs e)
+        protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
 
@@ -66,12 +66,15 @@ namespace MyShop.Views.Pages
 
         private async Task LoadOrderForEditAsync(Order order)
         {
+            if (_isLoading)
+                return;
+
+            _isLoading = true;
+
             try
             {
-                var fullOrder = await _dbContext.Orders
-                    .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Product)
-                    .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
+                var token = GetAuthToken();
+                var fullOrder = await _orderService.GetOrderByIdAsync(order.OrderId, token);
 
                 if (fullOrder == null)
                 {
@@ -92,119 +95,73 @@ namespace MyShop.Views.Pages
             {
                 await ShowErrorAsync($"Failed to load order: {ex.Message}");
             }
+            finally
+            {
+                _isLoading = false;
+            }
         }
 
         private async void OnSaveClicked(object sender, RoutedEventArgs e)
         {
-            if (_currentOrder == null)
+            if (_currentOrder == null || _isLoading)
                 return;
+
+            await SaveOrderChangesAsync();
+        }
+
+        private async Task SaveOrderChangesAsync()
+        {
+            _isLoading = true;
 
             try
             {
-                var dbOrder = await _dbContext.Orders
-                    .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Product)
-                    .FirstOrDefaultAsync(o => o.OrderId == _currentOrder.OrderId);
+                var token = GetAuthToken();
 
-                if (dbOrder == null)
-                {
-                    await ShowErrorAsync("Order not found.");
-                    return;
-                }
-
-                bool statusChangedToPaid = dbOrder.Status != "Paid" && SelectedStatus == "Paid";
-
-                if (statusChangedToPaid)
-                {
-                    var (isAvailable, errorMessage) = await CheckProductAvailabilityAsync(dbOrder);
-                    if (!isAvailable)
+                // Build update input
+                var orderItemUpdates = OrderItems
+                    .Select(ei => new OrderItemUpdateInput
                     {
-                        await ShowErrorAsync(errorMessage);
-                        return;
+                        OrderItemId = ei.OrderItem.OrderItemId,
+                        Quantity = ei.Quantity
+                    })
+                    .ToList();
+
+                var updateInput = new UpdateOrderInput
+                {
+                    Status = SelectedStatus,
+                    OrderItems = orderItemUpdates
+                };
+
+                // Update order via GraphQL API
+                var updatedOrder = await _orderService.UpdateOrderAsync(_currentOrder!.OrderId, updateInput, token);
+
+                if (updatedOrder != null)
+                {
+                    await ShowSuccessAsync($"Order #{_currentOrder.OrderId} updated successfully!");
+
+                    // Navigate back
+                    if (Frame.CanGoBack)
+                    {
+                        Frame.GoBack();
                     }
                 }
-
-                dbOrder.Status = SelectedStatus;
-
-                foreach (var editableItem in OrderItems)
+                else
                 {
-                    var orderItem = dbOrder.OrderItems.FirstOrDefault(oi => oi.OrderItemId == editableItem.OrderItem.OrderItemId);
-                    if (orderItem != null)
-                    {
-                        orderItem.Quantity = editableItem.Quantity;
-                        orderItem.TotalPrice = (int)(orderItem.UnitSalePrice * editableItem.Quantity);
-                    }
-                }
-
-                dbOrder.FinalPrice = dbOrder.OrderItems.Sum(oi => oi.TotalPrice);
-
-                if (statusChangedToPaid)
-                {
-                    foreach (var orderItem in dbOrder.OrderItems)
-                    {
-                        var product = await _dbContext.Products.FindAsync(orderItem.ProductId);
-                        if (product != null)
-                        {
-                            product.Count -= orderItem.Quantity;
-                            if (product.Count < 0)
-                                product.Count = 0;
-                        }
-                    }
-                }
-
-                await _dbContext.SaveChangesAsync();
-
-                await ShowSuccessAsync($"Order #{_currentOrder.OrderId} updated successfully!");
-
-                // Navigate back WITHOUT triggering reload (NavigationMode.Back will skip reload in OrderPage)
-                if (Frame.CanGoBack)
-                {
-                    Frame.GoBack();
+                    await ShowErrorAsync("Failed to update order. Please try again.");
                 }
             }
             catch (Exception ex)
             {
                 await ShowErrorAsync($"Failed to update order: {ex.Message}");
             }
-        }
-
-        private async Task<(bool IsAvailable, string ErrorMessage)> CheckProductAvailabilityAsync(Order order)
-        {
-            var insufficientProducts = new System.Collections.Generic.List<string>();
-
-            foreach (var editableItem in OrderItems)
+            finally
             {
-                var product = await _dbContext.Products.FindAsync(editableItem.OrderItem.ProductId);
-                if (product == null)
-                {
-                    insufficientProducts.Add($"• {editableItem.OrderItem.ProductId} - Product not found");
-                    continue;
-                }
-
-                if (product.Count < editableItem.Quantity)
-                {
-                    insufficientProducts.Add($"• {product.Name} (SKU: {product.Sku})\n  Required: {editableItem.Quantity} units, Available: {product.Count} units");
-                }
+                _isLoading = false;
             }
-
-            if (insufficientProducts.Count > 0)
-            {
-                var errorMessage = new StringBuilder();
-                errorMessage.AppendLine("Cannot mark order as Paid. Insufficient inventory for the following products:\n");
-                foreach (var product in insufficientProducts)
-                {
-                    errorMessage.AppendLine(product);
-                }
-
-                return (false, errorMessage.ToString());
-            }
-
-            return (true, string.Empty);
         }
 
         private void OnBackClicked(object sender, RoutedEventArgs e)
         {
-            // Just navigate back - OrderPage won't reload due to NavigationMode.Back check
             if (Frame.CanGoBack)
             {
                 Frame.GoBack();
@@ -213,7 +170,13 @@ namespace MyShop.Views.Pages
 
         private async Task ShowErrorAsync(string message)
         {
-            var dialog = new ContentDialog
+            if (_currentDialog != null)
+            {
+                _currentDialog.Hide();
+                _currentDialog = null;
+            }
+
+            _currentDialog = new ContentDialog
             {
                 Title = "Error",
                 Content = message,
@@ -221,12 +184,19 @@ namespace MyShop.Views.Pages
                 XamlRoot = this.XamlRoot
             };
 
-            await dialog.ShowAsync();
+            await _currentDialog.ShowAsync();
+            _currentDialog = null;
         }
 
         private async Task ShowSuccessAsync(string message)
         {
-            var dialog = new ContentDialog
+            if (_currentDialog != null)
+            {
+                _currentDialog.Hide();
+                _currentDialog = null;
+            }
+
+            _currentDialog = new ContentDialog
             {
                 Title = "Success",
                 Content = message,
@@ -234,7 +204,8 @@ namespace MyShop.Views.Pages
                 XamlRoot = this.XamlRoot
             };
 
-            await dialog.ShowAsync();
+            await _currentDialog.ShowAsync();
+            _currentDialog = null;
         }
 
         protected void SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = "")
@@ -244,6 +215,24 @@ namespace MyShop.Views.Pages
                 field = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
+        }
+
+        private string? GetAuthToken()
+        {
+            // Get token from session storage
+            var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
+            var token = sessionService?.GetAuthToken();
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                System.Diagnostics.Debug.WriteLine("[EDIT_ORDER_PAGE] ✗ No authentication token available");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[EDIT_ORDER_PAGE] ✓ Authentication token retrieved");
+            }
+            
+            return token;
         }
     }
 

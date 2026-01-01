@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Diagnostics;
 using Windows.Storage;
 using MyShop.Contracts;
 
@@ -10,12 +11,21 @@ namespace MyShop.Services
 
         private const string UsernameKey = "SavedUsername";
         private const string SessionTimestampKey = "SessionTimestamp";
+        private const string AuthTokenKey = "AuthToken";
+        private const string TokenTimestampKey = "TokenTimestamp";
         private const int SessionExpiryHours = 7 * 24; // 7 days
 
-        public void SaveSession(string username)
+        public void SaveSession(string username, string? token = null)
         {
             _localSettings.Values[UsernameKey] = username;
             _localSettings.Values[SessionTimestampKey] = DateTime.Now.ToString("o");
+            
+            if (!string.IsNullOrEmpty(token))
+            {
+                SaveToken(token);
+            }
+
+            Debug.WriteLine($"[SESSION] Session saved for user: {username}");
         }
 
         public string? GetSavedUsername()
@@ -27,6 +37,10 @@ namespace MyShop.Services
         {
             _localSettings.Values.Remove(UsernameKey);
             _localSettings.Values.Remove(SessionTimestampKey);
+            _localSettings.Values.Remove(AuthTokenKey);
+            _localSettings.Values.Remove(TokenTimestampKey);
+
+            Debug.WriteLine("[SESSION] Session cleared");
         }
 
         public bool HasValidSession()
@@ -46,6 +60,36 @@ namespace MyShop.Services
             }
 
             return false;
+        }
+
+        public void SaveToken(string token)
+        {
+            _localSettings.Values[AuthTokenKey] = token;
+            _localSettings.Values[TokenTimestampKey] = DateTime.UtcNow.ToString("o");
+
+            Debug.WriteLine("[SESSION] ✓ Authentication token saved");
+        }
+
+        public string? GetAuthToken()
+        {
+            var token = _localSettings.Values[AuthTokenKey] as string;
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                Debug.WriteLine("[SESSION] ✗ No authentication token found");
+                return null;
+            }
+
+            // Optionally check token expiry (JWT tokens have exp claim)
+            // For now, just return the token
+            Debug.WriteLine("[SESSION] ✓ Authentication token retrieved");
+            return token;
+        }
+
+        public bool HasValidToken()
+        {
+            var token = _localSettings.Values[AuthTokenKey] as string;
+            return !string.IsNullOrEmpty(token);
         }
     }
 }
