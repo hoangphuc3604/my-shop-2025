@@ -1,18 +1,19 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using MyShop.Data;
+using MyShop.Contracts;
 using MyShop.Data.Models;
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace MyShop.Views.Pages
 {
     public sealed partial class OrderDetailsPage : Page
     {
-        private MyShopDbContext _dbContext;
+        private readonly IOrderService _orderService;
+        private readonly ISessionService _sessionService;
         private Order? _currentOrder;
         private ObservableCollection<OrderItem> _orderItems;
 
@@ -31,12 +32,13 @@ namespace MyShop.Views.Pages
         public OrderDetailsPage()
         {
             this.InitializeComponent();
-            _dbContext = (App.Services.GetService(typeof(MyShopDbContext)) as MyShopDbContext)!;
+            _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
+            _sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
             _orderItems = new ObservableCollection<OrderItem>();
             this.DataContext = this;
         }
 
-        protected override async void OnNavigatedTo(NavigationEventArgs e)
+        protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
 
@@ -50,29 +52,56 @@ namespace MyShop.Views.Pages
         {
             try
             {
-                var fullOrder = await _dbContext.Orders
-                    .AsNoTracking()
-                    .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Product)
-                    .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
+                Debug.WriteLine("");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[ORDER_DETAILS] LOADING ORDER #{order.OrderId}");
+                Debug.WriteLine("════════════════════════════════════════");
+
+                var token = GetAuthToken();
+                var fullOrder = await _orderService.GetOrderByIdAsync(order.OrderId, token);
 
                 if (fullOrder == null)
                 {
                     await ShowErrorAsync("Order not found.");
+                    Debug.WriteLine("[ORDER_DETAILS] ✗ Order not found");
                     return;
                 }
 
                 CurrentOrder = fullOrder;
                 OrderItems.Clear();
-                foreach (var item in fullOrder.OrderItems)
+                
+                if (fullOrder.OrderItems != null)
                 {
-                    OrderItems.Add(item);
+                    foreach (var item in fullOrder.OrderItems)
+                    {
+                        OrderItems.Add(item);
+                    }
+                    Debug.WriteLine($"[ORDER_DETAILS] ✓ Loaded {OrderItems.Count} order items");
                 }
+
+                Debug.WriteLine("════════════════════════════════════════");
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"[ORDER_DETAILS] ✗ Error loading order: {ex.Message}");
                 await ShowErrorAsync($"Failed to load order details: {ex.Message}");
             }
+        }
+
+        private string? GetAuthToken()
+        {
+            var token = _sessionService?.GetAuthToken();
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                Debug.WriteLine("[ORDER_DETAILS] ✗ No authentication token available");
+            }
+            else
+            {
+                Debug.WriteLine("[ORDER_DETAILS] ✓ Authentication token retrieved");
+            }
+            
+            return token;
         }
 
         private void OnBackClicked(object sender, RoutedEventArgs e)

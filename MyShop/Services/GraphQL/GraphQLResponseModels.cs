@@ -102,7 +102,6 @@ namespace MyShop.Services.GraphQL
         public int OrderId { get; set; }
 
         [JsonPropertyName("createdTime")]
-        [JsonConverter(typeof(UnixTimestampConverter))]
         public string? CreatedTime { get; set; }
 
         [JsonPropertyName("finalPrice")]
@@ -117,7 +116,7 @@ namespace MyShop.Services.GraphQL
     }
 
     /// <summary>
-    /// Order item WITHOUT product data (removed due to backend issues)
+    /// Order item with product data
     /// </summary>
     public class OrderItemData
     {
@@ -136,6 +135,9 @@ namespace MyShop.Services.GraphQL
         [JsonPropertyName("totalPrice")]
         [JsonConverter(typeof(StringToIntConverter))]
         public int TotalPrice { get; set; }
+
+        [JsonPropertyName("product")]
+        public ProductData? Product { get; set; }
     }
 
     public class ProductData

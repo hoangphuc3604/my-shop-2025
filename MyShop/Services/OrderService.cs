@@ -33,6 +33,13 @@ namespace MyShop.Services
                                 quantity
                                 unitSalePrice
                                 totalPrice
+                                product {
+                                    sku
+                                    productId
+                                    name
+                                    importPrice
+                                    count
+                                }
                             }
                         }
                         pagination {
@@ -51,6 +58,8 @@ namespace MyShop.Services
             {
                 @params = new
                 {
+                    startDate = fromDate?.ToString("yyyy-MM-dd"),
+                    endDate = toDate?.ToString("yyyy-MM-dd"),
                     search = (string?)null,
                     page,
                     limit = pageSize
@@ -64,6 +73,10 @@ namespace MyShop.Services
                 Debug.WriteLine("[ORDER] FETCHING PAGINATED ORDERS");
                 Debug.WriteLine("════════════════════════════════════════");
                 Debug.WriteLine($"[ORDER] Page: {page}, Page Size: {pageSize}");
+                if (fromDate.HasValue || toDate.HasValue)
+                {
+                    Debug.WriteLine($"[ORDER] Date Range: {fromDate?.ToString("yyyy-MM-dd")} to {toDate?.ToString("yyyy-MM-dd")}");
+                }
                 Debug.WriteLine("════════════════════════════════════════");
 
                 var response = await _graphQLClient.QueryAsync<PaginatedOrdersResponse>(query, variables, token);
@@ -104,6 +117,13 @@ namespace MyShop.Services
                                 quantity
                                 unitSalePrice
                                 totalPrice
+                                product {
+                                    sku
+                                    productId
+                                    name
+                                    importPrice
+                                    count
+                                }
                             }
                         }
                         pagination {
@@ -122,6 +142,8 @@ namespace MyShop.Services
             {
                 @params = new
                 {
+                    startDate = (string?)null,
+                    endDate = (string?)null,
                     search = (string?)null,
                     page = 1,
                     limit = 1000
@@ -177,6 +199,13 @@ namespace MyShop.Services
                             quantity
                             unitSalePrice
                             totalPrice
+                            product {
+                                sku
+                                productId
+                                name
+                                importPrice
+                                count
+                            }
                         }
                     }
                 }
@@ -240,6 +269,13 @@ namespace MyShop.Services
                             quantity
                             unitSalePrice
                             totalPrice
+                            product {
+                                sku
+                                productId
+                                name
+                                importPrice
+                                count
+                            }
                         }
                     }
                 }
@@ -322,6 +358,8 @@ namespace MyShop.Services
             {
                 @params = new
                 {
+                    startDate = fromDate?.ToString("yyyy-MM-dd"),
+                    endDate = toDate?.ToString("yyyy-MM-dd"),
                     search = (string?)null,
                     page = 1,
                     limit = 1
@@ -334,6 +372,10 @@ namespace MyShop.Services
                 Debug.WriteLine("════════════════════════════════════════");
                 Debug.WriteLine("[ORDER] COUNTING ORDERS");
                 Debug.WriteLine("════════════════════════════════════════");
+                if (fromDate.HasValue || toDate.HasValue)
+                {
+                    Debug.WriteLine($"[ORDER] Date Range: {fromDate?.ToString("yyyy-MM-dd")} to {toDate?.ToString("yyyy-MM-dd")}");
+                }
 
                 var response = await _graphQLClient.QueryAsync<PaginatedOrdersResponse>(query, variables, token);
 
@@ -355,8 +397,7 @@ namespace MyShop.Services
             return new Order
             {
                 OrderId = data.OrderId,
-                CreatedTime = DateTime.Parse(data.CreatedTime ?? DateTime.UtcNow.ToString("o"), 
-                    null, System.Globalization.DateTimeStyles.RoundtripKind),
+                CreatedTime = DateTime.Parse(data.CreatedTime ?? DateTime.UtcNow.ToString("o")),
                 FinalPrice = data.FinalPrice,
                 Status = data.Status ?? "Created",
                 OrderItems = data.OrderItems?.Select(MapToOrderItem).ToList() ?? new List<OrderItem>()
@@ -371,7 +412,23 @@ namespace MyShop.Services
                 Quantity = data.Quantity,
                 UnitSalePrice = (int)data.UnitSalePrice,
                 TotalPrice = data.TotalPrice,
-                Product = null
+                Product = data.Product != null ? MapToProduct(data.Product) : null
+            };
+        }
+
+        private Product MapToProduct(ProductData data)
+        {
+            return new Product
+            {
+                ProductId = data.ProductId,
+                Name = data.Name ?? string.Empty,
+                Sku = data.Sku ?? string.Empty,
+                ImportPrice = data.ImportPrice,
+                Count = data.Count,
+                Description = data.Description ?? string.Empty,
+                ImageUrl1 = data.ImageUrl1 ?? string.Empty,
+                ImageUrl2 = data.ImageUrl2 ?? string.Empty,
+                ImageUrl3 = data.ImageUrl3 ?? string.Empty
             };
         }
     }
