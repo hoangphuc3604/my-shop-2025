@@ -42,6 +42,7 @@ public partial class App : Application
             services.AddSingleton(new GraphQLClient(graphqlEndpoint));
             services.AddSingleton<IOrderService, OrderService>();
             services.AddSingleton<IProductService, ProductService>();
+            services.AddSingleton<ICategoryService, CategoryService>();
             services.AddSingleton<IAccountService, AuthenticationService>();
 
             // Navigation and Session Services
@@ -50,6 +51,7 @@ public partial class App : Application
 
             // ViewModels and Views
             services.AddTransient<LoginViewModel>();
+            services.AddTransient<ProductViewModel>();
             services.AddTransient<LoginWindow>();
             services.AddTransient<MainWindow>();
             services.AddTransient<MainViewModel>();

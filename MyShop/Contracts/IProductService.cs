@@ -6,7 +6,45 @@ namespace MyShop.Contracts
 {
     public interface IProductService
     {
-        Task<List<Product>> GetProductsAsync(string? token);
+        /// <summary>
+        /// Get paginated list of products with filtering and sorting
+        /// </summary>
+        /// <param name="page">Page number (1-based)</param>
+        /// <param name="pageSize">Number of items per page</param>
+        /// <param name="categoryId">Filter by category ID (⚠ TODO: pending backend support - currently client-side)</param>
+        /// <param name="minPrice">Minimum price filter (✅ backend supported)</param>
+        /// <param name="maxPrice">Maximum price filter (✅ backend supported)</param>
+        /// <param name="search">Search keyword in product name (✅ backend supported)</param>
+        /// <param name="sortBy">Sort criteria (✅ backend supported)</param>
+        /// <param name="token">Authentication token</param>
+        Task<List<Product>> GetProductsAsync(
+            int page,
+            int pageSize,
+            int? categoryId,
+            double? minPrice,
+            double? maxPrice,
+            string? search,
+            string? sortBy,
+            string? token);
+
+        /// <summary>
+        /// Get product by ID
+        /// </summary>
         Task<Product?> GetProductByIdAsync(int productId, string? token);
+
+        /// <summary>
+        /// Get total count of products matching filters (for pagination)
+        /// </summary>
+        Task<int> GetTotalProductCountAsync(
+            int? categoryId,
+            double? minPrice,
+            double? maxPrice,
+            string? search,
+            string? token);
+
+        // TODO: Add mutations when backend is ready
+        // Task<Product?> CreateProductAsync(CreateProductInput input, string? token);
+        // Task<Product?> UpdateProductAsync(int productId, UpdateProductInput input, string? token);
+        // Task<bool> DeleteProductAsync(int productId, string? token);
     }
 }
