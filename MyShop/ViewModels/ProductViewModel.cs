@@ -1,0 +1,350 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using MyShop.Contracts;
+using MyShop.Data.Models;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace MyShop.ViewModels
+{
+    public partial class ProductViewModel : ObservableObject
+    {
+        private readonly IProductService _productService;
+        private readonly ICategoryService _categoryService;
+        private readonly ISessionService _sessionService;
+
+        // Collections
+        [ObservableProperty]
+        private ObservableCollection<Product> _products = new();
+
+        [ObservableProperty]
+        private ObservableCollection<Category> _categories = new();
+
+        // Selected items
+        [ObservableProperty]
+        private Product? _selectedProduct;
+
+        [ObservableProperty]
+        private Category? _selectedCategory;
+
+        // Search and filters
+        [ObservableProperty]
+        private string _searchKeyword = string.Empty;
+
+        // Price filters (use 0 to represent "no filter")
+        [ObservableProperty]
+        private double _minPrice = 0;
+
+        [ObservableProperty]
+        private double _maxPrice = 0;
+
+        // Convert to nullable for service calls
+        private double? MinPriceFilter => MinPrice > 0 ? MinPrice : null;
+        private double? MaxPriceFilter => MaxPrice > 0 ? MaxPrice : null;
+
+        [ObservableProperty]
+        private string? _selectedSortCriteria;
+
+        public List<string> SortOptions { get; } = new List<string>
+        {
+            "None",
+            "Name (A-Z)",
+            "Price (Low to High)",
+            "Stock (Low to High)",
+            "SKU"
+        };
+
+        // Pagination
+        [ObservableProperty]
+        private int _currentPage = 1;
+
+        [ObservableProperty]
+        private int _pageSize = 20;
+
+        [ObservableProperty]
+        private int _totalPages = 1;
+
+        [ObservableProperty]
+        private int _totalCount = 0;
+
+        [ObservableProperty]
+        private bool _hasPreviousPage;
+
+        [ObservableProperty]
+        private bool _hasNextPage;
+
+        // UI State
+        [ObservableProperty]
+        private bool _isLoading;
+
+        [ObservableProperty]
+        private string _statusMessage = "Ready";
+
+        public ProductViewModel(
+            IProductService productService,
+            ICategoryService categoryService,
+            ISessionService sessionService)
+        {
+            _productService = productService;
+            _categoryService = categoryService;
+            _sessionService = sessionService;
+
+            SelectedSortCriteria = "None";
+        }
+
+        /// <summary>
+        /// Initialize and load data when page is first shown
+        /// </summary>
+        public async Task InitializeAsync()
+        {
+            await LoadCategoriesAsync();
+            await LoadProductsAsync();
+        }
+
+        /// <summary>
+        /// Load categories for filter dropdown
+        /// </summary>
+        [RelayCommand]
+        private async Task LoadCategoriesAsync()
+        {
+            try
+            {
+                var token = _sessionService.GetAuthToken();
+                var categories = await _categoryService.GetCategoriesAsync(1, 100, null, token);
+
+                Categories.Clear();
+                
+                // Add "All Categories" option
+                Categories.Add(new Category { CategoryId = 0, Name = "All Categories" });
+                
+                foreach (var category in categories)
+                {
+                    Categories.Add(category);
+                }
+
+                // Set default selection
+                if (SelectedCategory == null && Categories.Any())
+                {
+                    SelectedCategory = Categories.First();
+                }
+
+                Debug.WriteLine($"[PRODUCT_VM] Loaded {categories.Count} categories");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT_VM] Error loading categories: {ex.Message}");
+                StatusMessage = "Failed to load categories";
+            }
+        }
+
+        /// <summary>
+        /// Load products with current filters and pagination
+        /// </summary>
+        [RelayCommand]
+        private async Task LoadProductsAsync()
+        {
+            if (IsLoading) return;
+
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Loading products...";
+
+                var token = _sessionService.GetAuthToken();
+                
+                // Get category ID for filter (0 means all categories)
+                var categoryId = SelectedCategory?.CategoryId > 0 ? SelectedCategory.CategoryId : (int?)null;
+                
+                // Map sort criteria to backend format
+                // TODO: When backend supports sorting, use actual sort field
+                var sortBy = MapSortCriteriaToField(SelectedSortCriteria);
+
+                Debug.WriteLine($"[PRODUCT_VM] Loading products - Page: {CurrentPage}, Category: {categoryId?.ToString() ?? "all"}");
+
+                // Load products
+                var products = await _productService.GetProductsAsync(
+                    CurrentPage,
+                    PageSize,
+                    categoryId,
+                    MinPriceFilter,
+                    MaxPriceFilter,
+                    string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim(),
+                    sortBy,
+                    token);
+
+                // Load total count for pagination
+                var totalCount = await _productService.GetTotalProductCountAsync(
+                    categoryId,
+                    MinPriceFilter,
+                    MaxPriceFilter,
+                    string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim(),
+                    token);
+
+                // Update products collection
+                Products.Clear();
+                foreach (var product in products)
+                {
+                    Products.Add(product);
+                }
+
+                // Update pagination state
+                TotalCount = totalCount;
+                TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                
+                if (TotalPages < 1) TotalPages = 1;
+                if (CurrentPage > TotalPages) CurrentPage = TotalPages;
+
+                UpdatePaginationState();
+
+                StatusMessage = $"Showing {Products.Count} of {TotalCount} products";
+                
+                Debug.WriteLine($"[PRODUCT_VM] Loaded {Products.Count} products, Total: {TotalCount}");
+                Debug.WriteLine($"[PRODUCT_VM] Pagination: Page {CurrentPage}/{TotalPages}, HasPrev={HasPreviousPage}, HasNext={HasNextPage}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT_VM] Error loading products: {ex.Message}");
+                StatusMessage = $"Error: {ex.Message}";
+                Products.Clear();
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// Go to previous page
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanGoPrevious))]
+        private async Task PreviousPageAsync()
+        {
+            if (CurrentPage > 1)
+            {
+                CurrentPage--;
+                await LoadProductsAsync();
+            }
+        }
+
+        private bool CanGoPrevious() => HasPreviousPage && !IsLoading;
+
+        /// <summary>
+        /// Go to next page
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanGoNext))]
+        private async Task NextPageAsync()
+        {
+            if (CurrentPage < TotalPages)
+            {
+                CurrentPage++;
+                await LoadProductsAsync();
+            }
+        }
+
+        private bool CanGoNext() => HasNextPage && !IsLoading;
+
+        /// <summary>
+        /// Apply search filter
+        /// </summary>
+        [RelayCommand]
+        private async Task SearchAsync()
+        {
+            CurrentPage = 1; // Reset to first page when searching
+            await LoadProductsAsync();
+        }
+
+        /// <summary>
+        /// Apply category filter
+        /// </summary>
+        [RelayCommand]
+        private async Task ApplyCategoryFilterAsync()
+        {
+            CurrentPage = 1;
+            await LoadProductsAsync();
+        }
+
+        /// <summary>
+        /// Apply price range filter
+        /// </summary>
+        [RelayCommand]
+        private async Task ApplyPriceFilterAsync()
+        {
+            CurrentPage = 1;
+            await LoadProductsAsync();
+        }
+
+        /// <summary>
+        /// Apply sorting
+        /// </summary>
+        [RelayCommand]
+        private async Task ApplySortAsync()
+        {
+            await LoadProductsAsync();
+        }
+
+        /// <summary>
+        /// Clear all filters
+        /// </summary>
+        [RelayCommand]
+        private async Task ClearFiltersAsync()
+        {
+            SearchKeyword = string.Empty;
+            MinPrice = 0;
+            MaxPrice = 0;
+            SelectedSortCriteria = "None";
+            
+            if (Categories.Any())
+            {
+                SelectedCategory = Categories.First(); // "All Categories"
+            }
+
+            CurrentPage = 1;
+            await LoadProductsAsync();
+        }
+
+        /// <summary>
+        /// Refresh products list
+        /// </summary>
+        [RelayCommand]
+        private async Task RefreshAsync()
+        {
+            await LoadProductsAsync();
+        }
+
+        /// <summary>
+        /// Update pagination button states
+        /// </summary>
+        private void UpdatePaginationState()
+        {
+            HasPreviousPage = CurrentPage > 1;
+            HasNextPage = CurrentPage < TotalPages;
+
+            // Update command can execute states
+            PreviousPageCommand.NotifyCanExecuteChanged();
+            NextPageCommand.NotifyCanExecuteChanged();
+        }
+
+        /// <summary>
+        /// Map UI sort criteria to backend field name
+        /// </summary>
+        private string? MapSortCriteriaToField(string? criteria)
+        {
+            if (string.IsNullOrEmpty(criteria) || criteria == "None")
+                return null;
+
+            // TODO: Update these when backend implements sorting
+            return criteria switch
+            {
+                "Name (A-Z)" => "name",
+                "Price (Low to High)" => "price",
+                "Stock (Low to High)" => "stock",
+                "SKU" => "sku",
+                _ => null
+            };
+        }
+    }
+}

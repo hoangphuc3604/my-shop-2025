@@ -182,12 +182,59 @@ namespace MyShop.Services.GraphQL
 
         [JsonPropertyName("name")]
         public string? Name { get; set; }
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
     }
 
     public class ProductsResponse
     {
         [JsonPropertyName("products")]
         public ProductData[]? Products { get; set; }
+    }
+
+    // ============ PAGINATED PRODUCTS RESPONSE ============
+    public class PaginatedProductsResponse
+    {
+        [JsonPropertyName("products")]
+        public PaginatedProductsResult? Products { get; set; }
+    }
+
+    public class PaginatedProductsResult
+    {
+        [JsonPropertyName("items")]
+        public ProductData[]? Items { get; set; }
+
+        [JsonPropertyName("pagination")]
+        public PaginationInfo? Pagination { get; set; }
+    }
+
+    // ============ CATEGORIES RESPONSES ============
+    public class CategoriesResponse
+    {
+        [JsonPropertyName("categories")]
+        public CategoryData[]? Categories { get; set; }
+    }
+
+    public class PaginatedCategoriesResponse
+    {
+        [JsonPropertyName("categories")]
+        public PaginatedCategoriesResult? Categories { get; set; }
+    }
+
+    public class PaginatedCategoriesResult
+    {
+        [JsonPropertyName("items")]
+        public CategoryData[]? Items { get; set; }
+
+        [JsonPropertyName("pagination")]
+        public PaginationInfo? Pagination { get; set; }
+    }
+
+    public class CategoryDetailResponse
+    {
+        [JsonPropertyName("category")]
+        public CategoryData? Category { get; set; }
     }
 
     public class OrderCountResponse
