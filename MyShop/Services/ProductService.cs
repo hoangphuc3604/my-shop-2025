@@ -28,19 +28,50 @@ namespace MyShop.Services
             string? sortBy,
             string? token)
         {
-            // Build ListParams for backend
-            // NOTE: Backend currently supports: search, page, limit
-            // TODO: When backend adds support, include categoryId, minPrice, maxPrice, sortBy
-            var paramsInput = $@"
-                params: {{
-                    page: {page}
-                    limit: {pageSize}
-                    {(string.IsNullOrEmpty(search) ? "" : $"search: \"{search}\"")}
-                }}";
+            // Build ProductListParams for backend
+            // Backend NOW supports: search, page, limit, sortBy, sortOrder, minPrice, maxPrice
+            // NOTE: categoryId is NOT supported by backend - we'll filter client-side
+            
+            var paramsBuilder = new List<string>
+            {
+                $"page: {page}",
+                $"limit: {pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                paramsBuilder.Add($"search: \"{search}\"");
+            }
+
+            // ✅ Backend supports price filtering now!
+            if (minPrice.HasValue)
+            {
+                paramsBuilder.Add($"minPrice: {(int)minPrice.Value}");
+            }
+
+            if (maxPrice.HasValue)
+            {
+                paramsBuilder.Add($"maxPrice: {(int)maxPrice.Value}");
+            }
+
+            // ✅ Backend supports sorting now!
+            if (!string.IsNullOrEmpty(sortBy))
+            {
+                var (backendSortBy, backendSortOrder) = MapSortToBackend(sortBy);
+                if (backendSortBy != null)
+                {
+                    paramsBuilder.Add($"sortBy: {backendSortBy}");
+                    paramsBuilder.Add($"sortOrder: {backendSortOrder}");
+                }
+            }
+
+            var paramsInput = string.Join("\n                    ", paramsBuilder);
 
             var query = $@"
                 query {{
-                    products({paramsInput}) {{
+                    products(params: {{
+                    {paramsInput}
+                    }}) {{
                         items {{
                             productId
                             sku
@@ -54,6 +85,7 @@ namespace MyShop.Services
                             category {{
                                 categoryId
                                 name
+                                description
                             }}
                         }}
                         pagination {{
@@ -75,9 +107,9 @@ namespace MyShop.Services
                 Debug.WriteLine("════════════════════════════════════════");
                 Debug.WriteLine($"[PRODUCT] Page: {page}, PageSize: {pageSize}");
                 Debug.WriteLine($"[PRODUCT] Search: {search ?? "none"}");
-                Debug.WriteLine($"[PRODUCT] Category: {categoryId?.ToString() ?? "all"} (TODO: backend filter)");
-                Debug.WriteLine($"[PRODUCT] Price Range: {minPrice?.ToString() ?? "any"} - {maxPrice?.ToString() ?? "any"} (TODO: backend filter)");
-                Debug.WriteLine($"[PRODUCT] Sort By: {sortBy ?? "none"} (TODO: backend sort)");
+                Debug.WriteLine($"[PRODUCT] Price Range: {minPrice?.ToString() ?? "any"} - {maxPrice?.ToString() ?? "any"} ✅ Backend");
+                Debug.WriteLine($"[PRODUCT] Sort By: {sortBy ?? "none"} ✅ Backend");
+                Debug.WriteLine($"[PRODUCT] Category: {categoryId?.ToString() ?? "all"} ⚠ Client-side (TODO: backend)");
                 Debug.WriteLine("[PRODUCT] Query:");
                 Debug.WriteLine(query);
                 Debug.WriteLine("════════════════════════════════════════");
@@ -90,54 +122,15 @@ namespace MyShop.Services
                 {
                     var products = response.Products.Items.Select(MapToProduct).ToList();
 
-                    // TODO: Remove client-side filtering when backend supports these parameters
-                    // NOTE: Client-side filtering affects pagination accuracy!
-                    // When filters are active, we fetch more items and filter locally
-                    
-                    var hasClientSideFilters = categoryId.HasValue || minPrice.HasValue || maxPrice.HasValue;
-                    
-                    // Apply client-side category filter
+                    // TODO: Remove client-side category filtering when backend supports categoryId parameter
+                    // NOTE: Price filtering and sorting are now handled by backend!
                     if (categoryId.HasValue)
                     {
                         Debug.WriteLine($"[PRODUCT] Applying client-side category filter: {categoryId.Value}");
                         products = products.Where(p => p.CategoryId == categoryId.Value).ToList();
+                        Debug.WriteLine($"[PRODUCT] After category filter: {products.Count} products");
                     }
 
-                    // Apply client-side price range filter
-                    if (minPrice.HasValue || maxPrice.HasValue)
-                    {
-                        Debug.WriteLine($"[PRODUCT] Applying client-side price filter: {minPrice} - {maxPrice}");
-                        products = products.Where(p =>
-                        {
-                            if (minPrice.HasValue && p.ImportPrice < minPrice.Value) return false;
-                            if (maxPrice.HasValue && p.ImportPrice > maxPrice.Value) return false;
-                            return true;
-                        }).ToList();
-                    }
-
-                    // TODO: Remove client-side sorting when backend supports it
-                    // Apply client-side sorting
-                    if (!string.IsNullOrEmpty(sortBy))
-                    {
-                        Debug.WriteLine($"[PRODUCT] Applying client-side sort: {sortBy}");
-                        products = sortBy.ToLower() switch
-                        {
-                            "name" => products.OrderBy(p => p.Name).ToList(),
-                            "price" => products.OrderBy(p => p.ImportPrice).ToList(),
-                            "stock" => products.OrderBy(p => p.Count).ToList(),
-                            "sku" => products.OrderBy(p => p.Sku).ToList(),
-                            _ => products
-                        };
-                    }
-
-                    Debug.WriteLine($"[PRODUCT] After client-side filters: {products.Count} products");
-                    
-                    if (hasClientSideFilters)
-                    {
-                        Debug.WriteLine("[PRODUCT] ⚠ Warning: Client-side filtering active. Pagination may be inaccurate.");
-                        Debug.WriteLine("[PRODUCT] TODO: Backend should support categoryId, minPrice, maxPrice parameters");
-                    }
-                    
                     Debug.WriteLine("════════════════════════════════════════");
 
                     return products;
@@ -217,17 +210,36 @@ namespace MyShop.Services
             string? token)
         {
             // Fetch first page to get pagination info with total count
-            // NOTE: Backend search is supported, but category/price filters are TODO
-            var paramsInput = $@"
-                params: {{
-                    page: 1
-                    limit: 1
-                    {(string.IsNullOrEmpty(search) ? "" : $"search: \"{search}\"")}
-                }}";
+            // NOTE: Backend now supports price filters, but not categoryId
+            var paramsBuilder = new List<string>
+            {
+                "page: 1",
+                "limit: 1"
+            };
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                paramsBuilder.Add($"search: \"{search}\"");
+            }
+
+            // ✅ Backend supports price filtering
+            if (minPrice.HasValue)
+            {
+                paramsBuilder.Add($"minPrice: {(int)minPrice.Value}");
+            }
+
+            if (maxPrice.HasValue)
+            {
+                paramsBuilder.Add($"maxPrice: {(int)maxPrice.Value}");
+            }
+
+            var paramsInput = string.Join("\n                    ", paramsBuilder);
 
             var query = $@"
                 query {{
-                    products({paramsInput}) {{
+                    products(params: {{
+                    {paramsInput}
+                    }}) {{
                         pagination {{
                             totalCount
                         }}
@@ -236,17 +248,20 @@ namespace MyShop.Services
 
             try
             {
-                Debug.WriteLine($"[PRODUCT] Getting total count (search: {search ?? "none"})");
+                Debug.WriteLine($"[PRODUCT] Getting total count (search: {search ?? "none"}, price: {minPrice}-{maxPrice})");
 
                 var response = await _graphQLClient.QueryAsync<PaginatedProductsResponse>(query, null, token);
 
                 var count = response?.Products?.Pagination?.TotalCount ?? 0;
                 
-                // TODO: When backend supports category/price filters, remove this note
-                // Currently we can only get search-filtered count from backend
-                // Category and price filtering happens client-side, so total count may be inaccurate
+                // TODO: When backend supports categoryId filter, total count will be accurate
+                // Currently categoryId filtering happens client-side after fetching
+                if (categoryId.HasValue)
+                {
+                    Debug.WriteLine($"[PRODUCT] Note: Category filter (ID={categoryId}) not applied to count (client-side only)");
+                }
+
                 Debug.WriteLine($"[PRODUCT] Total count from backend: {count}");
-                Debug.WriteLine("[PRODUCT] Note: Category/Price filters not applied to count (TODO: backend support)");
 
                 return count;
             }
@@ -255,6 +270,26 @@ namespace MyShop.Services
                 Debug.WriteLine($"[PRODUCT] ✗ Error getting total count: {ex.Message}");
                 return 0;
             }
+        }
+
+        /// <summary>
+        /// Map UI sort criteria to backend enum values
+        /// Returns (sortBy, sortOrder) tuple
+        /// </summary>
+        private (string? sortBy, string sortOrder) MapSortToBackend(string? uiSortCriteria)
+        {
+            if (string.IsNullOrEmpty(uiSortCriteria) || uiSortCriteria == "None")
+                return (null, "ASC");
+
+            // Map UI sort options to backend ProductSortBy enum
+            return uiSortCriteria switch
+            {
+                "Name (A-Z)" => ("NAME", "ASC"),
+                "Price (Low to High)" => ("IMPORT_PRICE", "ASC"),
+                "Stock (Low to High)" => ("COUNT", "ASC"),
+                "SKU" => ("PRODUCT_ID", "ASC"),
+                _ => (null, "ASC")
+            };
         }
 
         private Product MapToProduct(ProductData data)

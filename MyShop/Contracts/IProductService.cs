@@ -11,11 +11,11 @@ namespace MyShop.Contracts
         /// </summary>
         /// <param name="page">Page number (1-based)</param>
         /// <param name="pageSize">Number of items per page</param>
-        /// <param name="categoryId">Filter by category ID (TODO: pending backend support)</param>
-        /// <param name="minPrice">Minimum price filter (TODO: pending backend support)</param>
-        /// <param name="maxPrice">Maximum price filter (TODO: pending backend support)</param>
-        /// <param name="search">Search keyword in product name</param>
-        /// <param name="sortBy">Sort criteria (TODO: pending backend support)</param>
+        /// <param name="categoryId">Filter by category ID (⚠ TODO: pending backend support - currently client-side)</param>
+        /// <param name="minPrice">Minimum price filter (✅ backend supported)</param>
+        /// <param name="maxPrice">Maximum price filter (✅ backend supported)</param>
+        /// <param name="search">Search keyword in product name (✅ backend supported)</param>
+        /// <param name="sortBy">Sort criteria (✅ backend supported)</param>
         /// <param name="token">Authentication token</param>
         Task<List<Product>> GetProductsAsync(
             int page,
