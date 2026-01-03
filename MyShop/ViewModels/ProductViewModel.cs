@@ -160,7 +160,7 @@ namespace MyShop.ViewModels
                 var categoryId = SelectedCategory?.CategoryId > 0 ? SelectedCategory.CategoryId : (int?)null;
                 
                 // Map sort criteria to backend format
-                // TODO: When backend supports sorting, use actual sort field
+                // ✅ Backend now supports sorting via ProductListParams
                 var sortBy = MapSortCriteriaToField(SelectedSortCriteria);
 
                 Debug.WriteLine($"[PRODUCT_VM] Loading products - Page: {CurrentPage}, Category: {categoryId?.ToString() ?? "all"}");

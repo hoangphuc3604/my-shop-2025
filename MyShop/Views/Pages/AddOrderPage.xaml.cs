@@ -48,7 +48,18 @@ namespace MyShop.Views.Pages
             try
             {
                 var token = GetAuthToken();
-                var products = await _productService.GetProductsAsync(token);
+                // var products = await _productService.GetProductsAsync(token);
+
+                // Get all products (page 1, large page size to get all)
+                var products = await _productService.GetProductsAsync(
+                    page: 1,
+                    pageSize: 1000,
+                    categoryId: null,
+                    minPrice: null,
+                    maxPrice: null,
+                    search: null,
+                    sortBy: null,
+                    token: token);
 
                 _productSelections = products
                     .OrderBy(p => p.ProductId)
