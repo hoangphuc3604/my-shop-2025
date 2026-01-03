@@ -13,7 +13,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -46,107 +45,111 @@
         <!-- Content -->
         <ScrollViewer
             Grid.Row="2"
-            Grid.RowSpan="2"
             VerticalScrollBarVisibility="Auto"
             Padding="20">
-            <StackPanel Spacing="15">
-                <!-- Status Selector -->
-                <StackPanel Orientation="Horizontal" Spacing="10">
+            <StackPanel Spacing="20">
+                <!-- Status Selector Section -->
+                <StackPanel Spacing="10">
                     <TextBlock
-                        VerticalAlignment="Center"
+                        FontSize="14"
                         FontWeight="SemiBold"
-                        Text="Status:"/>
-                    <ComboBox
-                        Width="150"
-                        SelectedItem="{Binding SelectedStatus, Mode=TwoWay}">
-                        <x:String>Created</x:String>
-                        <x:String>Paid</x:String>
-                        <x:String>Cancelled</x:String>
-                    </ComboBox>
+                        Text="Order Status"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Text="Status:"/>
+                        <ComboBox
+                            MinWidth="150"
+                            SelectedItem="{Binding SelectedStatus, Mode=TwoWay}">
+                            <x:String>Created</x:String>
+                            <x:String>Paid</x:String>
+                            <x:String>Cancelled</x:String>
+                        </ComboBox>
+                    </StackPanel>
                 </StackPanel>
 
-                <!-- Items Label -->
-                <TextBlock
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    Text="Items:"/>
+                <!-- Items Section (Read-Only) -->
+                <StackPanel Spacing="10">
+                    <TextBlock
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Text="Order Items (Read-Only)"/>
 
-                <!-- Items List -->
-                <ItemsControl ItemsSource="{Binding OrderItems}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border
-                                Padding="12"
-                                BorderThickness="1"
-                                BorderBrush="{ThemeResource ControlElevationBorderBrush}"
-                                CornerRadius="4"
-                                Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                Margin="0,0,0,10">
-                                <Grid ColumnSpacing="15">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
+                    <!-- Items List -->
+                    <ItemsControl ItemsSource="{Binding OrderItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border
+                                    Padding="12"
+                                    BorderThickness="1"
+                                    BorderBrush="{ThemeResource ControlElevationBorderBrush}"
+                                    CornerRadius="4"
+                                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                    Margin="0,0,0,10">
+                                    <Grid ColumnSpacing="15">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                                    <!-- Product Name -->
-                                    <TextBlock
-                                        Grid.Column="0"
-                                        FontSize="12"
-                                        FontWeight="SemiBold"
-                                        VerticalAlignment="Center"
-                                        Text="{Binding OrderItem.Product.Name}"/>
+                                        <!-- Product Name -->
+                                        <TextBlock
+                                            Grid.Column="0"
+                                            FontSize="12"
+                                            FontWeight="SemiBold"
+                                            VerticalAlignment="Center"
+                                            Text="{Binding OrderItem.Product.Name}"/>
 
-                                    <!-- Qty Label -->
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        FontSize="11"
-                                        VerticalAlignment="Center"
-                                        Text="Qty:"/>
+                                        <!-- Qty Display (Read-Only) -->
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            FontSize="11"
+                                            VerticalAlignment="Center"
+                                            Foreground="{ThemeResource TextFillColorSecondary}">
+                                            <Run Text="Qty: "/>
+                                            <Run Text="{Binding Quantity}"/>
+                                        </TextBlock>
 
-                                    <!-- Quantity Input -->
-                                    <NumberBox
-                                        Grid.Column="2"
-                                        Width="70"
-                                        Minimum="1"
-                                        Maximum="999"
-                                        SpinButtonPlacementMode="Hidden"
-                                        Value="{Binding Quantity, Mode=TwoWay}"/>
+                                        <!-- Unit Price -->
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            FontSize="11"
+                                            VerticalAlignment="Center"
+                                            Foreground="{ThemeResource TextFillColorSecondary}">
+                                            <Run Text="@ "/>
+                                            <Run Text="{Binding OrderItem.UnitSalePrice, Converter={StaticResource PriceConverter}}"/>
+                                        </TextBlock>
 
-                                    <!-- Unit Price -->
-                                    <TextBlock
-                                        Grid.Column="3"
-                                        FontSize="11"
-                                        VerticalAlignment="Center"
-                                        Foreground="{ThemeResource TextFillColorSecondary}">
-                                        <Run Text="@ "/>
-                                        <Run Text="{Binding OrderItem.UnitSalePrice, Converter={StaticResource PriceConverter}}"/>
-                                    </TextBlock>
-
-                                    <!-- Total Price -->
-                                    <TextBlock
-                                        Grid.Column="4"
-                                        FontSize="12"
-                                        FontWeight="SemiBold"
-                                        VerticalAlignment="Center"
-                                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}">
-                                        <Run Text="= "/>
-                                        <Run Text="{Binding TotalPrice, Converter={StaticResource PriceConverter}}"/>
-                                    </TextBlock>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                                        <!-- Total Price -->
+                                        <TextBlock
+                                            Grid.Column="3"
+                                            FontSize="12"
+                                            FontWeight="SemiBold"
+                                            VerticalAlignment="Center"
+                                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}">
+                                            <Run Text="= "/>
+                                            <Run Text="{Binding TotalPrice, Converter={StaticResource PriceConverter}}"/>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
 
                 <!-- Total Price Footer -->
                 <StackPanel
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="12"
-                    Margin="0,20,0,0">
+                    Margin="0,10,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{ThemeResource ControlElevationBorderBrush}"
+                    Padding="0,20,0,0">
                     <TextBlock
                         FontSize="14"
                         FontWeight="SemiBold"
@@ -163,7 +166,7 @@
 
         <!-- Action Buttons Footer -->
         <Border
-            Grid.Row="4"
+            Grid.Row="3"
             Padding="20"
             Background="{ThemeResource LayerFillColorDefaultBrush}"
             BorderThickness="0,1,0,0"
@@ -174,7 +177,7 @@
                 Spacing="10"
                 HorizontalAlignment="Right">
                 <Button
-                    Content="Save Changes"
+                    Content="Save Status"
                     Click="OnSaveClicked"
                     Style="{StaticResource AccentButtonStyle}"/>
             </StackPanel>

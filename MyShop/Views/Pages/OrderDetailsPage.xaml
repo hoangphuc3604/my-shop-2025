@@ -93,9 +93,12 @@
                                         FontWeight="SemiBold">
                                         <Run Text="• "/>
                                         <Run Text="{Binding Product.Name}"/>
-                                        <Run Text=" (ID: "/>
-                                        <Run Text="{Binding ProductId}"/>
-                                        <Run Text=")"/>
+                                    </TextBlock>
+                                    <TextBlock
+                                        FontSize="11"
+                                        Foreground="{ThemeResource TextFillColorSecondary}">
+                                        <Run Text="SKU: "/>
+                                        <Run Text="{Binding Product.Sku}"/>
                                     </TextBlock>
                                     <TextBlock
                                         FontSize="11"

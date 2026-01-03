@@ -185,31 +185,42 @@ namespace MyShop.Services
         public async Task<Order?> CreateOrderAsync(CreateOrderInput input, string? token)
         {
             var query = @"
-                mutation {
-                    createOrder(input: {
-                        orderItems: [" + string.Join(",", input.OrderItems.Select(oi => 
-                            $"{{ productId: {oi.ProductId}, quantity: {oi.Quantity} }}")) + @"]
-                    }) {
-                        orderId
+                mutation Mutation($input: CreateOrderInput!) {
+                    addOrder(input: $input) {
                         createdTime
                         finalPrice
-                        status
+                        orderId
                         orderItems {
+                            orderId
                             orderItemId
-                            quantity
-                            unitSalePrice
-                            totalPrice
                             product {
-                                sku
+                                count
                                 productId
+                                sku
                                 name
                                 importPrice
-                                count
                             }
+                            productId
+                            quantity
+                            totalPrice
+                            unitSalePrice
                         }
+                        status
                     }
                 }
             ";
+
+            var variables = new
+            {
+                input = new
+                {
+                    orderItems = input.OrderItems.Select(oi => new
+                    {
+                        productId = oi.ProductId,
+                        quantity = oi.Quantity
+                    }).ToArray()
+                }
+            };
 
             try
             {
@@ -217,23 +228,32 @@ namespace MyShop.Services
                 Debug.WriteLine("════════════════════════════════════════");
                 Debug.WriteLine("[ORDER] CREATING ORDER");
                 Debug.WriteLine("════════════════════════════════════════");
-
-                var response = await _graphQLClient.QueryAsync<CreateOrderResponse>(query, null, token);
-
-                if (response?.CreateOrder != null)
+                Debug.WriteLine($"[ORDER] Items Count: {input.OrderItems.Count}");
+                foreach (var item in input.OrderItems)
                 {
-                    Debug.WriteLine($"[ORDER] ✓ Order #{response.CreateOrder.OrderId} created");
+                    Debug.WriteLine($"[ORDER]   - Product {item.ProductId}: Qty {item.Quantity}");
+                }
+                Debug.WriteLine("════════════════════════════════════════");
+
+                var response = await _graphQLClient.QueryAsync<CreateOrderResponse>(query, variables, token);
+
+                if (response?.AddOrder != null)
+                {
+                    Debug.WriteLine($"[ORDER] ✓ Order #{response.AddOrder.OrderId} created");
+                    Debug.WriteLine($"[ORDER] Final Price: {response.AddOrder.FinalPrice}");
+                    Debug.WriteLine($"[ORDER] Items: {response.AddOrder.OrderItems?.Length ?? 0}");
                     Debug.WriteLine("════════════════════════════════════════");
-                    return MapToOrder(response.CreateOrder);
+                    return MapToOrder(response.AddOrder);
                 }
 
-                Debug.WriteLine("[ORDER] ✗ Failed to create order");
+                Debug.WriteLine("[ORDER] ✗ Failed to create order - No response");
                 Debug.WriteLine("════════════════════════════════════════");
                 return null;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ORDER] ✗ Error creating order: {ex.Message}");
+                Debug.WriteLine($"[ORDER] Stack Trace: {ex.StackTrace}");
                 Debug.WriteLine("════════════════════════════════════════");
                 return null;
             }
@@ -241,45 +261,39 @@ namespace MyShop.Services
 
         public async Task<Order?> UpdateOrderAsync(int orderId, UpdateOrderInput input, string? token)
         {
-            var statusPart = !string.IsNullOrEmpty(input.Status) 
-                ? $"status: \"{input.Status}\"" 
-                : "";
-
-            var itemsPart = input.OrderItems != null && input.OrderItems.Count > 0
-                ? $"orderItems: [{string.Join(",", input.OrderItems.Select(oi => $"{{ orderItemId: {oi.OrderItemId}, quantity: {oi.Quantity} }}"))}]"
-                : "";
-
-            var inputParts = new List<string>();
-            if (!string.IsNullOrEmpty(statusPart))
-                inputParts.Add(statusPart);
-            if (!string.IsNullOrEmpty(itemsPart))
-                inputParts.Add(itemsPart);
-
             var query = @"
-                mutation {
-                    updateOrder(orderId: " + orderId + @", input: {
-                        " + string.Join(", ", inputParts) + @"
-                    }) {
-                        orderId
-                        createdTime
+                mutation Mutation($updateOrderId: ID!, $input: UpdateOrderInput!) {
+                    updateOrder(id: $updateOrderId, input: $input) {
                         finalPrice
                         status
                         orderItems {
                             orderItemId
+                            orderId
+                            productId
                             quantity
-                            unitSalePrice
                             totalPrice
+                            unitSalePrice
                             product {
-                                sku
-                                productId
-                                name
-                                importPrice
                                 count
+                                importPrice
+                                name
+                                productId
+                                sku
                             }
                         }
                     }
                 }
             ";
+
+            var variables = new
+            {
+                updateOrderId = orderId.ToString(),
+                input = new
+                {
+                    status = input.Status
+                    // REMOVED: orderItems - backend UpdateOrderInput only accepts status
+                }
+            };
 
             try
             {
@@ -287,23 +301,38 @@ namespace MyShop.Services
                 Debug.WriteLine("════════════════════════════════════════");
                 Debug.WriteLine($"[ORDER] UPDATING ORDER #{orderId}");
                 Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[ORDER] New Status: {input.Status}");
+                Debug.WriteLine("════════════════════════════════════════");
 
-                var response = await _graphQLClient.QueryAsync<UpdateOrderResponse>(query, null, token);
+                var response = await _graphQLClient.QueryAsync<UpdateOrderResponse>(query, variables, token);
 
                 if (response?.UpdateOrder != null)
                 {
                     Debug.WriteLine($"[ORDER] ✓ Order #{orderId} updated");
+                    Debug.WriteLine($"[ORDER] Status: {response.UpdateOrder.Status}");
+                    Debug.WriteLine($"[ORDER] Final Price: {response.UpdateOrder.FinalPrice}");
+                    Debug.WriteLine($"[ORDER] Items: {response.UpdateOrder.OrderItems?.Length ?? 0}");
                     Debug.WriteLine("════════════════════════════════════════");
-                    return MapToOrder(response.UpdateOrder);
+
+                    // Map the update response to Order (set OrderId from parameter since response doesn't include it)
+                    return new Order
+                    {
+                        OrderId = orderId,
+                        CreatedTime = DateTime.UtcNow, // Use current time since response doesn't include createdTime
+                        FinalPrice = response.UpdateOrder.FinalPrice,
+                        Status = response.UpdateOrder.Status ?? "Created",
+                        OrderItems = response.UpdateOrder.OrderItems?.Select(MapToOrderItem).ToList() ?? new List<OrderItem>()
+                    };
                 }
 
-                Debug.WriteLine("[ORDER] ✗ Failed to update order");
+                Debug.WriteLine("[ORDER] ✗ Failed to update order - No response");
                 Debug.WriteLine("════════════════════════════════════════");
                 return null;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ORDER] ✗ Error updating order: {ex.Message}");
+                Debug.WriteLine($"[ORDER] Stack Trace: {ex.StackTrace}");
                 Debug.WriteLine("════════════════════════════════════════");
                 return null;
             }
@@ -312,13 +341,15 @@ namespace MyShop.Services
         public async Task<bool> DeleteOrderAsync(int orderId, string? token)
         {
             var query = @"
-                mutation {
-                    deleteOrder(orderId: " + orderId + @") {
-                        success
-                        message
-                    }
+                mutation Mutation($deleteOrderId: ID!) {
+                    deleteOrder(id: $deleteOrderId)
                 }
             ";
+
+            var variables = new
+            {
+                deleteOrderId = orderId.ToString()
+            };
 
             try
             {
@@ -326,10 +357,14 @@ namespace MyShop.Services
                 Debug.WriteLine("════════════════════════════════════════");
                 Debug.WriteLine($"[ORDER] DELETING ORDER #{orderId}");
                 Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[ORDER] Order ID: {orderId}");
+                Debug.WriteLine("════════════════════════════════════════");
 
-                var response = await _graphQLClient.QueryAsync<DeleteOrderResponse>(query, null, token);
+                var response = await _graphQLClient.QueryAsync<DeleteOrderSimpleResponse>(query, variables, token);
 
-                var success = response?.DeleteOrder?.Success ?? false;
+                // The mutation returns a boolean directly
+                var success = response?.DeleteOrder ?? false;
+                
                 Debug.WriteLine($"[ORDER] {(success ? "✓" : "✗")} Order #{orderId} {(success ? "deleted" : "deletion failed")}");
                 Debug.WriteLine("════════════════════════════════════════");
                 return success;
@@ -337,6 +372,7 @@ namespace MyShop.Services
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ORDER] ✗ Error deleting order: {ex.Message}");
+                Debug.WriteLine($"[ORDER] Stack Trace: {ex.StackTrace}");
                 Debug.WriteLine("════════════════════════════════════════");
                 return false;
             }

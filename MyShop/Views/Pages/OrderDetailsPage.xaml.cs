@@ -5,28 +5,46 @@ using MyShop.Contracts;
 using MyShop.Data.Models;
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Diagnostics;
 
 namespace MyShop.Views.Pages
 {
-    public sealed partial class OrderDetailsPage : Page
+    public sealed partial class OrderDetailsPage : Page, INotifyPropertyChanged
     {
         private readonly IOrderService _orderService;
         private readonly ISessionService _sessionService;
         private Order? _currentOrder;
         private ObservableCollection<OrderItem> _orderItems;
 
+        public event PropertyChangedEventHandler? PropertyChanged;
+
         public Order? CurrentOrder
         {
             get => _currentOrder;
-            set => _currentOrder = value;
+            set
+            {
+                if (_currentOrder != value)
+                {
+                    _currentOrder = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         public ObservableCollection<OrderItem> OrderItems
         {
             get => _orderItems;
-            set => _orderItems = value;
+            set
+            {
+                if (_orderItems != value)
+                {
+                    _orderItems = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         public OrderDetailsPage()
@@ -123,6 +141,11 @@ namespace MyShop.Views.Pages
             };
 
             await dialog.ShowAsync();
+        }
+
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

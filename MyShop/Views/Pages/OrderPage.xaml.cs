@@ -20,7 +20,6 @@ namespace MyShop.Views.Pages
         private bool _isLoading = false;
         private ContentDialog? _currentDialog;
         private ObservableCollection<Order> _cachedOrders;
-        private bool _dataLoaded = false;
 
         public OrderPage()
         {
@@ -33,15 +32,9 @@ namespace MyShop.Views.Pages
         {   
             base.OnNavigatedTo(e);
             
-            if (!_dataLoaded || e.NavigationMode != NavigationMode.Back)
-            {
-                await LoadOrdersAsync();
-                _dataLoaded = true;
-            }
-            else
-            {
-                OrdersDataGrid.ItemsSource = _cachedOrders;
-            }
+            _currentPage = 1;
+            _totalPages = 1;
+            await LoadOrdersAsync();
         }
 
         private async Task LoadOrdersAsync()
@@ -58,24 +51,48 @@ namespace MyShop.Views.Pages
                 var toDate = GetToDate();
                 var token = GetAuthToken();
 
-                // Get total count
+                Debug.WriteLine($"[ORDER_PAGE] Loading orders - Page: {_currentPage}, From: {fromDate}, To: {toDate}");
+
+                // Get total count first
                 var totalCount = await _orderService.GetTotalOrderCountAsync(fromDate, toDate, token);
                 _totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / ORDERS_PER_PAGE) : 1;
+                
+                Debug.WriteLine($"[ORDER_PAGE] Total count: {totalCount}, Total pages: {_totalPages}");
+                
+                // Validate current page against new total pages
                 ValidateCurrentPage();
+                
+                Debug.WriteLine($"[ORDER_PAGE] Validated page: {_currentPage}");
 
                 // Get orders for current page
                 var orders = await _orderService.GetOrdersAsync(_currentPage, ORDERS_PER_PAGE, fromDate, toDate, token);
+                
+                Debug.WriteLine($"[ORDER_PAGE] Retrieved {orders.Count} orders from service");
 
+                // Clear the collection completely
                 _cachedOrders.Clear();
+                
+                Debug.WriteLine($"[ORDER_PAGE] Cleared cache, adding new orders...");
+
+                // Add new orders
                 foreach (var order in orders)
                 {
                     _cachedOrders.Add(order);
+                    Debug.WriteLine($"[ORDER_PAGE] Added order #{order.OrderId}");
                 }
                 
+                Debug.WriteLine($"[ORDER_PAGE] Cache now contains {_cachedOrders.Count} orders");
+
+                // Force DataGrid to refresh
+                OrdersDataGrid.ItemsSource = null;
                 OrdersDataGrid.ItemsSource = _cachedOrders;
+                
+                Debug.WriteLine($"[ORDER_PAGE] DataGrid refreshed");
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"[ORDER_PAGE] ✗ Error loading orders: {ex.Message}");
+                Debug.WriteLine($"[ORDER_PAGE] ✗ Stack Trace: {ex.StackTrace}");
                 await ShowErrorDialogAsync($"Failed to load orders: {ex.Message}");
             }
             finally
@@ -102,7 +119,6 @@ namespace MyShop.Views.Pages
 
         private string? GetAuthToken()
         {
-            // Get token from session storage
             var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
             var token = sessionService?.GetAuthToken();
             
@@ -121,10 +137,15 @@ namespace MyShop.Views.Pages
         private void ValidateCurrentPage()
         {
             if (_currentPage > _totalPages)
+            {
+                Debug.WriteLine($"[ORDER_PAGE] Page {_currentPage} exceeds total pages {_totalPages}, adjusting to {_totalPages}");
                 _currentPage = _totalPages;
+            }
 
             if (_currentPage < 1)
+            {
                 _currentPage = 1;
+            }
         }
 
         private void UpdatePaginationControls()
@@ -132,6 +153,7 @@ namespace MyShop.Views.Pages
             PageInfoText.Text = $"Page {_currentPage} of {_totalPages}";
             PreviousButton.IsEnabled = (_currentPage > 1) && !_isLoading;
             NextButton.IsEnabled = (_currentPage < _totalPages) && !_isLoading;
+            Debug.WriteLine($"[ORDER_PAGE] Updated pagination: {PageInfoText.Text}");
         }
 
         private async Task ShowErrorDialogAsync(string message)
@@ -293,27 +315,29 @@ namespace MyShop.Views.Pages
 
                 if (success)
                 {
+                    Debug.WriteLine($"[ORDER_PAGE] ✓ Order #{orderId} deleted successfully");
+                    
+                    // Show success dialog first
                     await ShowSuccessDialogAsync($"Order #{orderId} deleted successfully!");
 
-                    if (_currentPage > _totalPages - 1)
-                    {
-                        _currentPage = Math.Max(1, _currentPage - 1);
-                    }
-
+                    // THEN reset pagination and reload
+                    _currentPage = 1;
+                    _totalPages = 1;
+                    _isLoading = false; // Reset before reload
+                    
+                    // Load fresh data
                     await LoadOrdersAsync();
                 }
                 else
                 {
+                    _isLoading = false;
                     await ShowErrorDialogAsync("Failed to delete order.");
                 }
             }
             catch (Exception ex)
             {
-                await ShowErrorDialogAsync($"Failed to delete order: {ex.Message}");
-            }
-            finally
-            {
                 _isLoading = false;
+                await ShowErrorDialogAsync($"Failed to delete order: {ex.Message}");
             }
         }
 

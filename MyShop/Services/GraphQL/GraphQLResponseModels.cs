@@ -248,20 +248,50 @@ namespace MyShop.Services.GraphQL
 
     public class CreateOrderResponse
     {
-        [JsonPropertyName("createOrder")]
-        public OrderData? CreateOrder { get; set; }
+        [JsonPropertyName("addOrder")]
+        public OrderData? AddOrder { get; set; }
     }
 
     public class UpdateOrderResponse
     {
         [JsonPropertyName("updateOrder")]
-        public OrderData? UpdateOrder { get; set; }
+        public UpdateOrderData? UpdateOrder { get; set; }
+    }
+
+    /// <summary>
+    /// Simplified order data for update response (doesn't include createdTime, orderId)
+    /// </summary>
+    public class UpdateOrderData
+    {
+        [JsonPropertyName("finalPrice")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int FinalPrice { get; set; }
+
+        [JsonPropertyName("status")]
+        public string? Status { get; set; }
+
+        [JsonPropertyName("orderItems")]
+        public OrderItemData[]? OrderItems { get; set; }
+
+        // These properties are needed to map to Order model
+        // Set them based on the context or keep them as optional
+        [JsonIgnore]
+        public int OrderId { get; set; }
+
+        [JsonIgnore]
+        public string? CreatedTime { get; set; }
     }
 
     public class DeleteOrderResponse
     {
         [JsonPropertyName("deleteOrder")]
         public DeleteResult? DeleteOrder { get; set; }
+    }
+
+    public class DeleteOrderSimpleResponse
+    {
+        [JsonPropertyName("deleteOrder")]
+        public bool DeleteOrder { get; set; }
     }
 
     public class DeleteResult

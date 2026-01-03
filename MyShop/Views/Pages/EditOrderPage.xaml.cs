@@ -17,7 +17,7 @@ namespace MyShop.Views.Pages
         private readonly IOrderService _orderService;
         private Order? _currentOrder;
         private string _selectedStatus = "Created";
-        private ObservableCollection<EditableOrderItem> _orderItems;
+        private ObservableCollection<ReadOnlyOrderItem> _orderItems;
         private bool _isLoading = false;
         private ContentDialog? _currentDialog;
 
@@ -33,7 +33,7 @@ namespace MyShop.Views.Pages
             set => SetProperty(ref _selectedStatus, value);
         }
 
-        public ObservableCollection<EditableOrderItem> OrderItems
+        public ObservableCollection<ReadOnlyOrderItem> OrderItems
         {
             get => _orderItems;
             set => SetProperty(ref _orderItems, value);
@@ -45,7 +45,7 @@ namespace MyShop.Views.Pages
         {
             this.InitializeComponent();
             _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
-            _orderItems = new ObservableCollection<EditableOrderItem>();
+            _orderItems = new ObservableCollection<ReadOnlyOrderItem>();
             this.DataContext = this;
         }
 
@@ -88,7 +88,7 @@ namespace MyShop.Views.Pages
 
                 foreach (var item in fullOrder.OrderItems)
                 {
-                    OrderItems.Add(new EditableOrderItem(item));
+                    OrderItems.Add(new ReadOnlyOrderItem(item));
                 }
             }
             catch (Exception ex)
@@ -106,10 +106,10 @@ namespace MyShop.Views.Pages
             if (_currentOrder == null || _isLoading)
                 return;
 
-            await SaveOrderChangesAsync();
+            await SaveOrderStatusAsync();
         }
 
-        private async Task SaveOrderChangesAsync()
+        private async Task SaveOrderStatusAsync()
         {
             _isLoading = true;
 
@@ -117,19 +117,13 @@ namespace MyShop.Views.Pages
             {
                 var token = GetAuthToken();
 
-                // Build update input
-                var orderItemUpdates = OrderItems
-                    .Select(ei => new OrderItemUpdateInput
-                    {
-                        OrderItemId = ei.OrderItem.OrderItemId,
-                        Quantity = ei.Quantity
-                    })
-                    .ToList();
+                System.Diagnostics.Debug.WriteLine("[EDIT_ORDER_PAGE] Updating order status to: " + SelectedStatus);
 
+                // Build update input with ONLY status
                 var updateInput = new UpdateOrderInput
                 {
                     Status = SelectedStatus,
-                    OrderItems = orderItemUpdates
+                    OrderItems = null // UpdateOrderInput doesn't accept orderItems field
                 };
 
                 // Update order via GraphQL API
@@ -137,7 +131,7 @@ namespace MyShop.Views.Pages
 
                 if (updatedOrder != null)
                 {
-                    await ShowSuccessAsync($"Order #{_currentOrder.OrderId} updated successfully!");
+                    await ShowSuccessAsync($"Order #{_currentOrder.OrderId} status changed to '{SelectedStatus}' successfully!");
 
                     // Navigate back
                     if (Frame.CanGoBack)
@@ -236,34 +230,20 @@ namespace MyShop.Views.Pages
         }
     }
 
-    public class EditableOrderItem : INotifyPropertyChanged
+    /// <summary>
+    /// Read-only order item - no quantity editing allowed
+    /// </summary>
+    public class ReadOnlyOrderItem
     {
-        private int _quantity;
-
         public OrderItem OrderItem { get; }
 
-        public int Quantity
-        {
-            get => _quantity;
-            set
-            {
-                if (_quantity != value)
-                {
-                    _quantity = value;
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Quantity)));
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TotalPrice)));
-                }
-            }
-        }
+        public int Quantity => OrderItem.Quantity;
 
-        public int TotalPrice => (int)(OrderItem.UnitSalePrice * Quantity);
+        public int TotalPrice => (int)(OrderItem.UnitSalePrice * OrderItem.Quantity);
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        public EditableOrderItem(OrderItem orderItem)
+        public ReadOnlyOrderItem(OrderItem orderItem)
         {
             OrderItem = orderItem;
-            _quantity = orderItem.Quantity;
         }
     }
 }

@@ -48,7 +48,6 @@ namespace MyShop.Views.Pages
             try
             {
                 var token = GetAuthToken();
-                // var products = await _productService.GetProductsAsync(token);
 
                 // Get all products (page 1, large page size to get all)
                 var products = await _productService.GetProductsAsync(
@@ -160,14 +159,25 @@ namespace MyShop.Views.Pages
                     OrderItems = orderItems
                 };
 
+                System.Diagnostics.Debug.WriteLine("[ADD_ORDER_PAGE] Creating order...");
+
                 // Create order via GraphQL API
                 var newOrder = await _orderService.CreateOrderAsync(createOrderInput, token);
 
+                System.Diagnostics.Debug.WriteLine($"[ADD_ORDER_PAGE] Order creation result: {(newOrder != null ? "Success" : "Null")}");
+
+                // Check if order was created successfully
                 if (newOrder != null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[ADD_ORDER_PAGE] ✓ Order #{newOrder.OrderId} created successfully");
+                    
+                    // Show success dialog
                     await ShowSuccessAsync($"Order #{newOrder.OrderId} created successfully with {selectedProducts.Count} product(s)!");
 
-                    // Navigate back
+                    // Reset _isLoading BEFORE navigating back
+                    _isLoading = false;
+                    
+                    // Navigate back after dialog closes
                     if (Frame.CanGoBack)
                     {
                         Frame.GoBack();
@@ -175,11 +185,14 @@ namespace MyShop.Views.Pages
                 }
                 else
                 {
-                    await ShowErrorAsync("Failed to create order. Please try again.");
+                    System.Diagnostics.Debug.WriteLine("[ADD_ORDER_PAGE] ✗ newOrder is null - response parsing failed");
+                    await ShowErrorAsync("Failed to create order. The response from the server could not be parsed. Please try again.");
                 }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[ADD_ORDER_PAGE] ✗ Exception: {ex.GetType().Name} - {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ADD_ORDER_PAGE] ✗ Stack: {ex.StackTrace}");
                 await ShowErrorAsync($"Failed to create order: {ex.Message}");
             }
             finally

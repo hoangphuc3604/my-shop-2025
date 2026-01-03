@@ -315,5 +315,41 @@ namespace MyShop.Services
                 } : null
             };
         }
+
+        private Order MapToOrder(OrderData data)
+        {
+            return new Order
+            {
+                OrderId = data.OrderId,
+                CreatedTime = DateTime.TryParse(data.CreatedTime, out var dt) ? dt : DateTime.MinValue,
+                FinalPrice = data.FinalPrice,
+                Status = data.Status ?? string.Empty,
+                OrderItems = data.OrderItems != null
+                    ? data.OrderItems.Select(MapToOrderItem).ToList()
+                    : new List<OrderItem>()
+            };
+        }
+
+        private OrderItem MapToOrderItem(OrderItemData data)
+        {
+            return new OrderItem
+            {
+                OrderItemId = data.OrderItemId,
+                ProductId = data.Product?.ProductId ?? 0,
+                Quantity = data.Quantity,
+                TotalPrice = data.TotalPrice,
+                UnitSalePrice = data.UnitSalePrice,
+                Product = data.Product != null
+                    ? new Product
+                    {
+                        ProductId = data.Product.ProductId,
+                        Sku = data.Product.Sku ?? string.Empty,
+                        Name = data.Product.Name ?? string.Empty,
+                        ImportPrice = data.Product.ImportPrice,
+                        Count = data.Product.Count
+                    }
+                    : null
+            };
+        }
     }
 }
