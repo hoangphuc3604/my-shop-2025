@@ -105,7 +105,7 @@ namespace MyShop.Views.Pages
         private DateTime? GetFromDate()
         {
             return FromDatePicker.Date.HasValue
-                ? FromDatePicker.Date.Value.UtcDateTime
+                ? FromDatePicker.Date.Value.DateTime
                 : null;
         }
 
@@ -114,7 +114,7 @@ namespace MyShop.Views.Pages
             if (!ToDatePicker.Date.HasValue)
                 return null;
 
-            return ToDatePicker.Date.Value.UtcDateTime.AddDays(1);
+            return ToDatePicker.Date.Value.DateTime.AddDays(1);
         }
 
         private string? GetAuthToken()

@@ -44,6 +44,7 @@ public partial class App : Application
             services.AddSingleton<IProductService, ProductService>();
             services.AddSingleton<ICategoryService, CategoryService>();
             services.AddSingleton<IAccountService, AuthenticationService>();
+            services.AddSingleton<IReportService, ReportService>();
 
             // Navigation and Session Services
             services.AddSingleton<INavigationService, NavigationService>();
