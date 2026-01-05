@@ -45,6 +45,10 @@ public partial class App : Application
             services.AddSingleton<ICategoryService, CategoryService>();
             services.AddSingleton<IAccountService, AuthenticationService>();
             services.AddSingleton<IReportService, ReportService>();
+            services.AddSingleton<IDashboardService, DashboardService>();
+
+            // UI Services
+            services.AddSingleton<DashboardUIService>();
 
             // Navigation and Session Services
             services.AddSingleton<INavigationService, NavigationService>();

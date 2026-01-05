@@ -14,6 +14,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Views\Pages\AddOrderPage.xaml" />
+    <None Remove="Views\Pages\DashboardPage.xaml" />
     <None Remove="Views\Pages\EditOrderDialog.xaml" />
     <None Remove="Views\Pages\EditOrderPage.xaml" />
     <None Remove="Views\Pages\OrderDetailsDialog.xaml" />
@@ -86,6 +87,9 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Update="Views\Pages\OrderDetailsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Update="Views\Pages\DashboardPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <None Update="Views\Pages\OrdersPage.xaml">

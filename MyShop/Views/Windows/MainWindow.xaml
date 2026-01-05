@@ -31,6 +31,13 @@
                 x:Name="OrdersItem"
                 Content="Orders"
                 Icon="List" />
+            <NavigationViewItem
+                x:Name="ReportItem"
+                Content="Report">
+                <NavigationViewItem.Icon>
+                    <FontIcon Glyph="&#xE9D2;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
         </NavigationView.MenuItems>
         <NavigationView.FooterMenuItems>
             <NavigationViewItem

@@ -54,6 +54,7 @@ public sealed partial class MainWindow : Window
             "Dashboard" => typeof(Views.Pages.DashboardPage),
             "Products" => typeof(Views.Pages.ProductPage),
             "Orders" => typeof(Views.Pages.OrderPage),
+            "Report" => typeof(Views.Pages.ReportPage),
             _ => null
         };
 

@@ -83,21 +83,6 @@ namespace MyShop.Services
             }
         }
 
-        public async Task<List<DailyRevenue>> GetDailyRevenueAsync(DateTime? fromDate, DateTime? toDate, string? token)
-        {
-            var orders = await FetchAllOrdersAsync(fromDate, toDate, token);
-            return GenerateDailyRevenues(orders, fromDate, toDate);
-        }
-
-        public async Task<List<MonthlyRevenue>> GetMonthlyRevenueAsync(int? year, string? token)
-        {
-            DateTime? fromDate = year.HasValue ? new DateTime(year.Value, 1, 1) : (DateTime?)null;
-            DateTime? toDate = year.HasValue ? new DateTime(year.Value, 12, 31) : (DateTime?)null;
-
-            var orders = await FetchAllOrdersAsync(fromDate, toDate, token);
-            return GenerateMonthlyRevenues(orders, fromDate, toDate);
-        }
-
         public async Task<List<ProductRevenue>> GetProductRevenueAsync(DateTime? fromDate, DateTime? toDate, string? token)
         {
             var orders = await FetchAllOrdersAsync(fromDate, toDate, token);
