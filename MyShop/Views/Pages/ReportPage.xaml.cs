@@ -147,7 +147,7 @@ namespace MyShop.Views.Pages
             {
                 NoDataMessageRevenue.Visibility = Visibility.Collapsed;
                 DrawRevenueBarChart(_currentReport.WeeklyRevenues, 
-                    d => GetWeekDateRange(d.Year, d.WeekNumber), 
+                    d => $"{d.WeekStartDate:MM-dd} ~ {d.WeekEndDate.AddDays(-1):MM-dd}", 
                     d => d.TotalRevenue);
             }
             else if (timePeriod == "Month" && _currentReport.MonthlyRevenues.Count > 0)
@@ -182,7 +182,7 @@ namespace MyShop.Views.Pages
             {
                 NoDataMessageQuantity.Visibility = Visibility.Collapsed;
                 DrawQuantityLineChart(_currentReport.WeeklyRevenues.Cast<dynamic>().ToList(), 
-                    d => GetWeekDateRange(((WeeklyRevenue)d).Year, ((WeeklyRevenue)d).WeekNumber), 
+                    d => $"{((WeeklyRevenue)d).WeekStartDate:MM-dd} ~ {((WeeklyRevenue)d).WeekEndDate.AddDays(-1):MM-dd}", 
                     d => GetProductQuantity(((WeeklyRevenue)d), _selectedProductId));
             }
             else if (timePeriod == "Month" && _currentReport.MonthlyRevenues.Count > 0)
@@ -208,17 +208,15 @@ namespace MyShop.Views.Pages
 
         private string GetWeekDateRange(int year, int weekNumber)
         {
-            // Find the week using both year and week number, prioritizing year match
             var week = _currentReport?.WeeklyRevenues
                 .FirstOrDefault(w => w.Year == year && w.WeekNumber == weekNumber);
             
-            // If not found, try just week number (for edge cases)
             week ??= _currentReport?.WeeklyRevenues
                 .FirstOrDefault(w => w.WeekNumber == weekNumber);
             
             if (week != null)
             {
-                return $"{week.WeekStartDate:MM-dd} ~ {week.WeekEndDate:MM-dd}";
+                return $"{week.WeekStartDate:MM-dd} ~ {week.WeekEndDate.AddDays(-1):MM-dd}";
             }
             
             return $"W{weekNumber}";
