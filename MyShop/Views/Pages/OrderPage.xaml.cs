@@ -23,8 +23,8 @@ namespace MyShop.Views.Pages
         private bool _isLoading = false;
         private ContentDialog? _currentDialog;
         private ObservableCollection<Order> _cachedOrders;
-        private string _sortCriteria = "OrderId";
-        private string _sortOrder = "Asc";
+        private string _sortCriteria = "CREATED_TIME";
+        private string _sortOrder = "ASC";
         private List<Order> _allOrdersForCurrentDateRange = new List<Order>();
         private bool _isInitialized = false;
 
@@ -42,8 +42,8 @@ namespace MyShop.Views.Pages
             SizeChanged += OrderPage_SizeChanged;
             _currentPage = 1;
             _totalPages = 1;
-            _sortCriteria = "OrderId";
-            _sortOrder = "Asc";
+            _sortCriteria = "CREATED_TIME";
+            _sortOrder = "ASC";
             
             /*// Load items per page preference
             _ordersPerPage = _sessionService.GetItemsPerPage();
@@ -111,47 +111,22 @@ namespace MyShop.Views.Pages
                 ValidateCurrentPage();
                 Debug.WriteLine($"[ORDER_PAGE] Validated page: {_currentPage}");
 
-                // ⭐ KEY FIX: Fetch ALL orders for the date range (not just current page)
-                // Use a large page size to get all orders at once
-                var allOrders = await _orderService.GetOrdersAsync(1, 10000, fromDate, toDate, token);
+                // Call API with sort parameters
+                var allOrders = await _orderService.GetOrdersAsync(_currentPage, _ordersPerPage, fromDate, toDate, token, _sortCriteria, _sortOrder);
                 
-                Debug.WriteLine($"[ORDER_PAGE] Retrieved {allOrders.Count} total orders from service");
-
-                // Store all orders for reference
-                _allOrdersForCurrentDateRange = allOrders;
-
-                // Apply sorting to the complete list
-                var sortedOrders = ApplySorting(allOrders);
-
-                Debug.WriteLine($"[ORDER_PAGE] After sorting: {sortedOrders.Count} orders");
-
-                // NOW paginate the sorted results with dynamic items per page
-                var paginatedOrders = sortedOrders
-                    .Skip((_currentPage - 1) * _ordersPerPage)
-                    .Take(_ordersPerPage)
-                    .ToList();
-
-                Debug.WriteLine($"[ORDER_PAGE] Paginated to page {_currentPage}: {paginatedOrders.Count} orders requested, {_ordersPerPage} items per page");
-                Debug.WriteLine($"[ORDER_PAGE] Skip count: {(_currentPage - 1) * _ordersPerPage}, Take count: {_ordersPerPage}");
-
-                // ✅ FIX: Ensure we never display more items than requested
-                if (paginatedOrders.Count > _ordersPerPage)
-                {
-                    Debug.WriteLine($"[ORDER_PAGE] ⚠ WARNING: Paginated list has {paginatedOrders.Count} items but expected max {_ordersPerPage}");
-                    paginatedOrders = paginatedOrders.Take(_ordersPerPage).ToList();
-                }
+                Debug.WriteLine($"[ORDER_PAGE] Retrieved {allOrders.Count} orders from service");
 
                 // Update UI with paginated results
                 _cachedOrders.Clear();
-                Debug.WriteLine($"[ORDER_PAGE] Cleared cache, adding {paginatedOrders.Count} paginated orders...");
+                Debug.WriteLine($"[ORDER_PAGE] Cleared cache, adding {allOrders.Count} orders...");
 
-                foreach (var order in paginatedOrders)
+                foreach (var order in allOrders)
                 {
                     _cachedOrders.Add(order);
                     Debug.WriteLine($"[ORDER_PAGE] Added order #{order.OrderId}");
                 }
                 
-                Debug.WriteLine($"[ORDER_PAGE] ✓ Cache now contains {_cachedOrders.Count} orders (max: {_ordersPerPage})");
+                Debug.WriteLine($"[ORDER_PAGE] ✓ Cache now contains {_cachedOrders.Count} orders");
 
                 OrdersDataGrid.ItemsSource = null;
                 OrdersDataGrid.ItemsSource = _cachedOrders;
@@ -169,40 +144,6 @@ namespace MyShop.Views.Pages
                 _isLoading = false;
                 UpdatePaginationControls();
             }
-        }
-
-        /// <summary>
-        /// Apply sorting to the orders based on current criteria and order
-        /// </summary>
-        private List<Order> ApplySorting(List<Order> orders)
-        {
-            IOrderedEnumerable<Order> sortedOrders = null;
-
-            // Apply initial sort based on criteria
-            switch (_sortCriteria)
-            {
-                case "FinalPrice":
-                    sortedOrders = _sortOrder == "Asc"
-                        ? orders.OrderBy(o => o.FinalPrice)
-                        : orders.OrderByDescending(o => o.FinalPrice);
-                    break;
-
-                case "Status":
-                    sortedOrders = _sortOrder == "Asc"
-                        ? orders.OrderBy(o => o.Status)
-                        : orders.OrderByDescending(o => o.Status);
-                    break;
-
-                case "OrderId":
-                default:
-                    sortedOrders = _sortOrder == "Asc"
-                        ? orders.OrderBy(o => o.OrderId)
-                        : orders.OrderByDescending(o => o.OrderId);
-                    break;
-            }
-
-            Debug.WriteLine($"[ORDER_PAGE] ✓ Sorted {orders.Count} orders by {_sortCriteria} ({_sortOrder})");
-            return sortedOrders.ToList();
         }
 
         private DateTime? GetFromDate()

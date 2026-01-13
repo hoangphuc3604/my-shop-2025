@@ -136,9 +136,8 @@
                     Grid.Column="1"
                     SelectionChanged="OnSortCriteriaChanged"
                     ToolTipService.ToolTip="Select field to sort by">
-                    <ComboBoxItem Content="Order ID" Tag="OrderId" IsSelected="True"/>
-                    <ComboBoxItem Content="Order Value" Tag="FinalPrice"/>
-                    <ComboBoxItem Content="Status" Tag="Status"/>
+                    <ComboBoxItem Content="Created Time" Tag="CREATED_TIME" IsSelected="True"/>
+                    <ComboBoxItem Content="Final Price" Tag="FINAL_PRICE"/>
                 </ComboBox>
 
                 <!-- Sort Order Label -->
@@ -154,8 +153,8 @@
                     Grid.Column="3"
                     SelectionChanged="OnSortOrderChanged"
                     ToolTipService.ToolTip="Sort ascending or descending">
-                    <ComboBoxItem Content="Ascending" Tag="Asc" IsSelected="True"/>
-                    <ComboBoxItem Content="Descending" Tag="Desc"/>
+                    <ComboBoxItem Content="Ascending" Tag="ASC" IsSelected="True"/>
+                    <ComboBoxItem Content="Descending" Tag="DESC"/>
                 </ComboBox>
 
                 <!-- Items Per Page Label -->

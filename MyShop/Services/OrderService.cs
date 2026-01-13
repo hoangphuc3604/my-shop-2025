@@ -18,7 +18,7 @@ namespace MyShop.Services
             _graphQLClient = graphQLClient;
         }
 
-        public async Task<List<Order>> GetOrdersAsync(int page, int pageSize, DateTime? fromDate, DateTime? toDate, string? token)
+        public async Task<List<Order>> GetOrdersAsync(int page, int pageSize, DateTime? fromDate, DateTime? toDate, string? token, string? sortBy = null, string? sortOrder = null)
         {
             var query = @"
                 query Orders($params: ListParams) {
@@ -54,16 +54,20 @@ namespace MyShop.Services
                 }
             ";
 
+            var paramsObject = new
+            {
+                startDate = fromDate?.ToString("yyyy-MM-dd"),
+                endDate = toDate?.ToString("yyyy-MM-dd"),
+                search = (string?)null,
+                page,
+                limit = pageSize,
+                sortBy = sortBy ?? "CREATED_TIME",
+                sortOrder = sortOrder ?? "ASC"
+            };
+
             var variables = new
             {
-                @params = new
-                {
-                    startDate = fromDate?.ToString("yyyy-MM-dd"),
-                    endDate = toDate?.ToString("yyyy-MM-dd"),
-                    search = (string?)null,
-                    page,
-                    limit = pageSize
-                }
+                @params = paramsObject
             };
 
             try
@@ -77,6 +81,7 @@ namespace MyShop.Services
                 {
                     Debug.WriteLine($"[ORDER] Date Range: {fromDate?.ToString("yyyy-MM-dd")} to {toDate?.ToString("yyyy-MM-dd")}");
                 }
+                Debug.WriteLine($"[ORDER] Sort: {sortBy ?? "CREATED_TIME"} ({sortOrder ?? "ASC"})");
                 Debug.WriteLine("════════════════════════════════════════");
 
                 var response = await _graphQLClient.QueryAsync<PaginatedOrdersResponse>(query, variables, token);
@@ -146,7 +151,9 @@ namespace MyShop.Services
                     endDate = (string?)null,
                     search = (string?)null,
                     page = 1,
-                    limit = 1000
+                    limit = 1000,
+                    sortBy = "CREATED_TIME",
+                    sortOrder = "ASC"
                 }
             };
 
@@ -398,7 +405,9 @@ namespace MyShop.Services
                     endDate = toDate?.ToString("yyyy-MM-dd"),
                     search = (string?)null,
                     page = 1,
-                    limit = 1
+                    limit = 1,
+                    sortBy = "CREATED_TIME",
+                    sortOrder = "ASC"
                 }
             };
 

@@ -7,7 +7,7 @@ namespace MyShop.Contracts
 {
     public interface IOrderService
     {
-        Task<List<Order>> GetOrdersAsync(int page, int pageSize, DateTime? fromDate, DateTime? toDate, string? token);
+        Task<List<Order>> GetOrdersAsync(int page, int pageSize, DateTime? fromDate, DateTime? toDate, string? token, string? sortBy = null, string? sortOrder = null);
         Task<Order?> GetOrderByIdAsync(int orderId, string? token);
         Task<Order?> CreateOrderAsync(CreateOrderInput input, string? token);
         Task<Order?> UpdateOrderAsync(int orderId, UpdateOrderInput input, string? token);
