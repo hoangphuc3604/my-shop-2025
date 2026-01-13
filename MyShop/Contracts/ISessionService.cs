@@ -12,5 +12,9 @@ namespace MyShop.Contracts
         void SaveToken(string token);
         string? GetAuthToken();
         bool HasValidToken();
+
+        // User preferences
+        void SaveLastPage(string pageName);
+        string? GetLastPage();
     }
 }

@@ -16,9 +16,10 @@ namespace MyShop.Views.Pages
     public sealed partial class OrderPage : Page
     {
         private readonly IOrderService _orderService;
+        private readonly ISessionService _sessionService;
         private int _currentPage = 1;
         private int _totalPages = 1;
-        private const int ORDERS_PER_PAGE = 10;
+        private int _ordersPerPage = 10;
         private bool _isLoading = false;
         private ContentDialog? _currentDialog;
         private ObservableCollection<Order> _cachedOrders;
@@ -31,6 +32,7 @@ namespace MyShop.Views.Pages
         {
             this.InitializeComponent();
             _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
+            _sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
             _cachedOrders = new ObservableCollection<Order>();
         }
 
@@ -42,6 +44,20 @@ namespace MyShop.Views.Pages
             _totalPages = 1;
             _sortCriteria = "OrderId";
             _sortOrder = "Asc";
+            
+            /*// Load items per page preference
+            _ordersPerPage = _sessionService.GetItemsPerPage();
+            
+            // Set the combobox to match
+            foreach (var item in ItemsPerPageCombo.Items)
+            {
+                if (item is ComboBoxItem comboItem && comboItem.Tag?.ToString() == _ordersPerPage.ToString())
+                {
+                    ItemsPerPageCombo.SelectedItem = comboItem;
+                    break;
+                }
+            }*/
+            
             _isInitialized = true;
             await LoadOrdersAsync();
         }
@@ -85,10 +101,11 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[ORDER_PAGE] Loading orders - From: {fromDate}, To: {toDate}");
                 Debug.WriteLine($"[ORDER_PAGE] Sort: {_sortCriteria} ({_sortOrder})");
+                Debug.WriteLine($"[ORDER_PAGE] Items per page: {_ordersPerPage}");
 
                 // Get total count for pagination
                 var totalCount = await _orderService.GetTotalOrderCountAsync(fromDate, toDate, token);
-                _totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / ORDERS_PER_PAGE) : 1;
+                _totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / _ordersPerPage) : 1;
                 
                 Debug.WriteLine($"[ORDER_PAGE] Total count: {totalCount}, Total pages: {_totalPages}");
                 ValidateCurrentPage();
@@ -108,17 +125,25 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[ORDER_PAGE] After sorting: {sortedOrders.Count} orders");
 
-                // NOW paginate the sorted results
+                // NOW paginate the sorted results with dynamic items per page
                 var paginatedOrders = sortedOrders
-                    .Skip((_currentPage - 1) * ORDERS_PER_PAGE)
-                    .Take(ORDERS_PER_PAGE)
+                    .Skip((_currentPage - 1) * _ordersPerPage)
+                    .Take(_ordersPerPage)
                     .ToList();
 
-                Debug.WriteLine($"[ORDER_PAGE] Paginated to page {_currentPage}: {paginatedOrders.Count} orders");
+                Debug.WriteLine($"[ORDER_PAGE] Paginated to page {_currentPage}: {paginatedOrders.Count} orders requested, {_ordersPerPage} items per page");
+                Debug.WriteLine($"[ORDER_PAGE] Skip count: {(_currentPage - 1) * _ordersPerPage}, Take count: {_ordersPerPage}");
+
+                // ✅ FIX: Ensure we never display more items than requested
+                if (paginatedOrders.Count > _ordersPerPage)
+                {
+                    Debug.WriteLine($"[ORDER_PAGE] ⚠ WARNING: Paginated list has {paginatedOrders.Count} items but expected max {_ordersPerPage}");
+                    paginatedOrders = paginatedOrders.Take(_ordersPerPage).ToList();
+                }
 
                 // Update UI with paginated results
                 _cachedOrders.Clear();
-                Debug.WriteLine($"[ORDER_PAGE] Cleared cache, adding paginated orders...");
+                Debug.WriteLine($"[ORDER_PAGE] Cleared cache, adding {paginatedOrders.Count} paginated orders...");
 
                 foreach (var order in paginatedOrders)
                 {
@@ -126,12 +151,12 @@ namespace MyShop.Views.Pages
                     Debug.WriteLine($"[ORDER_PAGE] Added order #{order.OrderId}");
                 }
                 
-                Debug.WriteLine($"[ORDER_PAGE] Cache now contains {_cachedOrders.Count} orders");
+                Debug.WriteLine($"[ORDER_PAGE] ✓ Cache now contains {_cachedOrders.Count} orders (max: {_ordersPerPage})");
 
                 OrdersDataGrid.ItemsSource = null;
                 OrdersDataGrid.ItemsSource = _cachedOrders;
                 
-                Debug.WriteLine($"[ORDER_PAGE] DataGrid refreshed");
+                Debug.WriteLine($"[ORDER_PAGE] DataGrid refreshed with {_cachedOrders.Count} items");
             }
             catch (Exception ex)
             {
@@ -512,6 +537,26 @@ namespace MyShop.Views.Pages
             {
                 _sortOrder = selectedItem.Tag.ToString();
                 Debug.WriteLine($"[ORDER_PAGE] Sort order changed to: {_sortOrder}");
+                
+                _currentPage = 1;
+                await LoadOrdersAsync();
+            }
+        }
+
+        /// <summary>
+        /// Handle items per page change
+        /// </summary>
+        private async void OnItemsPerPageChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoading || !_isInitialized)
+                return;
+
+            var selectedItem = ItemsPerPageCombo.SelectedItem as ComboBoxItem;
+            if (selectedItem != null && int.TryParse(selectedItem.Tag?.ToString(), out var itemsPerPage))
+            {
+                _ordersPerPage = itemsPerPage;
+                /*_sessionService.SaveItemsPerPage(itemsPerPage);*/
+                Debug.WriteLine($"[ORDER_PAGE] Items per page changed to: {itemsPerPage}");
                 
                 _currentPage = 1;
                 await LoadOrdersAsync();

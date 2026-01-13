@@ -161,14 +161,17 @@
                        VerticalAlignment="Bottom"/>
             </Grid>
 
-            <!-- Second row: Sort and Clear Filters -->
+            <!-- Second row: Sort By, Items Per Page, and Clear Filters -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="200"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
+                <!-- Sort By -->
                 <ComboBox Grid.Column="0"
                          Header="Sort By"
                          ItemsSource="{x:Bind ViewModel.SortOptions}"
@@ -176,7 +179,21 @@
                          HorizontalAlignment="Stretch"
                          SelectionChanged="OnSortChanged"/>
 
-                <Button Grid.Column="2"
+                <!-- Items Per Page -->
+                <ComboBox x:Name="ItemsPerPageCombo"
+                         Grid.Column="2"
+                         Header="Items Per Page"
+                         SelectionChanged="OnItemsPerPageChanged"
+                         HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="5 Items" Tag="5" IsSelected="False"/>
+                    <ComboBoxItem Content="10 Items" Tag="10" IsSelected="True"/>
+                    <ComboBoxItem Content="15 Items" Tag="15" IsSelected="False"/>
+                    <ComboBoxItem Content="20 Items" Tag="20" IsSelected="False"/>
+                    <ComboBoxItem Content="25 Items" Tag="25" IsSelected="False"/>
+                </ComboBox>
+
+                <!-- Clear Filters Button -->
+                <Button Grid.Column="4"
                        Content="Clear All Filters"
                        Command="{x:Bind ViewModel.ClearFiltersCommand}"
                        Margin="0,26,0,0"

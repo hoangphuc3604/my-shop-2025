@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Services;
 using MyShop.ViewModels;
+using MyShop.Contracts;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -13,15 +14,18 @@ namespace MyShop.Views.Pages
 {
     public sealed partial class ProductPage : Page
     {
-        public ProductViewModel ViewModel { get; }
+        public ProductViewModel ViewModel { get; set; }
+        private ISessionService? _sessionService;
 
         public ProductPage()
         {
             this.InitializeComponent();
-            ViewModel = (App.Services.GetService(typeof(ProductViewModel)) as ProductViewModel)!;
+            var viewModel = App.Services.GetService(typeof(ProductViewModel)) as ProductViewModel;
+            ViewModel = viewModel ?? throw new InvalidOperationException("ProductViewModel could not be resolved from services");
+            _sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
         }
 
-        protected override async void OnNavigatedTo(NavigationEventArgs e)
+        protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
             SizeChanged += ProductPage_SizeChanged;
@@ -30,6 +34,24 @@ namespace MyShop.Views.Pages
             {
                 Debug.WriteLine("[PRODUCT_PAGE] OnNavigatedTo - Initializing...");
                 await ViewModel.InitializeAsync();
+                
+                /*// Restore items per page preference
+                if (_sessionService != null)
+                {
+                    var itemsPerPage = _sessionService.GetItemsPerPage();
+                    ViewModel.ItemsPerPage = itemsPerPage;
+                    
+                    // Set the combobox to match
+                    foreach (var item in ItemsPerPageCombo.Items)
+                    {
+                        if (item is ComboBoxItem comboItem && comboItem.Tag?.ToString() == itemsPerPage.ToString())
+                        {
+                            ItemsPerPageCombo.SelectedItem = comboItem;
+                            break;
+                        }
+                    }
+                }*/
+                
                 UpdateUIState();
             }
             catch (Exception ex)
@@ -54,7 +76,6 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[PRODUCT_PAGE] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
 
-                // Update padding only - layout is already responsive in XAML
                 this.Padding = new Thickness(padding);
             }
             catch (Exception ex)
@@ -76,6 +97,22 @@ namespace MyShop.Views.Pages
             {
                 EmptyStatePanel.Visibility = Visibility.Collapsed;
                 ProductsListView.Visibility = Visibility.Visible;
+            }
+        }
+
+        private async void OnItemsPerPageChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ItemsPerPageCombo.SelectedItem is ComboBoxItem item && int.TryParse(item.Tag?.ToString(), out var itemsPerPage))
+            {
+                if (ViewModel == null)
+                    ViewModel = App.Services.GetService(typeof(ProductViewModel)) as ProductViewModel;
+
+                ViewModel.ItemsPerPage = itemsPerPage;
+                Debug.WriteLine($"[PRODUCT_PAGE] Items per page changed to: {itemsPerPage}");
+                
+                // Reload products with new pagination
+                await ViewModel.InitializeAsync();
+                UpdateUIState();
             }
         }
 

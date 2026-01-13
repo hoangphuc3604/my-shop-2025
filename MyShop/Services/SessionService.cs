@@ -13,6 +13,7 @@ namespace MyShop.Services
         private const string SessionTimestampKey = "SessionTimestamp";
         private const string AuthTokenKey = "AuthToken";
         private const string TokenTimestampKey = "TokenTimestamp";
+        private const string LastPageKey = "LastPage";
         private const int SessionExpiryHours = 7 * 24; // 7 days
 
         public void SaveSession(string username, string? token = null)
@@ -39,6 +40,7 @@ namespace MyShop.Services
             _localSettings.Values.Remove(SessionTimestampKey);
             _localSettings.Values.Remove(AuthTokenKey);
             _localSettings.Values.Remove(TokenTimestampKey);
+            _localSettings.Values.Remove(LastPageKey);
 
             Debug.WriteLine("[SESSION] Session cleared");
         }
@@ -80,8 +82,6 @@ namespace MyShop.Services
                 return null;
             }
 
-            // Optionally check token expiry (JWT tokens have exp claim)
-            // For now, just return the token
             Debug.WriteLine("[SESSION] ✓ Authentication token retrieved");
             return token;
         }
@@ -90,6 +90,19 @@ namespace MyShop.Services
         {
             var token = _localSettings.Values[AuthTokenKey] as string;
             return !string.IsNullOrEmpty(token);
+        }
+
+        public void SaveLastPage(string pageName)
+        {
+            _localSettings.Values[LastPageKey] = pageName;
+            Debug.WriteLine($"[SESSION] Last page saved: {pageName}");
+        }
+
+        public string? GetLastPage()
+        {
+            var lastPage = _localSettings.Values[LastPageKey] as string;
+            Debug.WriteLine($"[SESSION] Retrieved last page: {lastPage ?? "Dashboard (default)"}");
+            return lastPage;
         }
     }
 }

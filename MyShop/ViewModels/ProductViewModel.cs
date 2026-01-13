@@ -346,5 +346,12 @@ namespace MyShop.ViewModels
                 _ => null
             };
         }
+
+        // Add this property to ProductViewModel to match usage in ProductPage.xaml.cs
+        public int ItemsPerPage
+        {
+            get => PageSize;
+            set => PageSize = value;
+        }
     }
 }

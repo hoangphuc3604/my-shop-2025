@@ -103,7 +103,7 @@
             </Grid>
         </Border>
 
-        <!-- Sorting Filter -->
+        <!-- Sorting and Items Per Page Filter -->
         <Border 
             Grid.Row="2"
             Padding="15"
@@ -118,6 +118,8 @@
                     <ColumnDefinition Width="200"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="180"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
@@ -154,6 +156,25 @@
                     ToolTipService.ToolTip="Sort ascending or descending">
                     <ComboBoxItem Content="Ascending" Tag="Asc" IsSelected="True"/>
                     <ComboBoxItem Content="Descending" Tag="Desc"/>
+                </ComboBox>
+
+                <!-- Items Per Page Label -->
+                <TextBlock 
+                    Grid.Column="4"
+                    Text="Items Per Page:"
+                    VerticalAlignment="Center"
+                    Margin="20,0,10,0"/>
+
+                <!-- Items Per Page ComboBox -->
+                <ComboBox
+                    x:Name="ItemsPerPageCombo"
+                    Grid.Column="5"
+                    SelectionChanged="OnItemsPerPageChanged"
+                    ToolTipService.ToolTip="Set number of items per page">
+                    <ComboBoxItem Content="5 Items" Tag="5" IsSelected="False"/>
+                    <ComboBoxItem Content="10 Items" Tag="10" IsSelected="True"/>
+                    <ComboBoxItem Content="15 Items" Tag="15" IsSelected="False"/>
+                    <ComboBoxItem Content="20 Items" Tag="20" IsSelected="False"/>
                 </ComboBox>
             </Grid>
         </Border>
