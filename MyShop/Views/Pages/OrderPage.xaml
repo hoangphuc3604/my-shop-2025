@@ -15,6 +15,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -102,9 +103,64 @@
             </Grid>
         </Border>
 
+        <!-- Sorting Filter -->
+        <Border 
+            Grid.Row="2"
+            Padding="15"
+            Margin="20,10,20,0"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource ControlElevationBorderBrush}"
+            CornerRadius="8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Sort By Label -->
+                <TextBlock 
+                    Grid.Column="0"
+                    Text="Sort By:"
+                    VerticalAlignment="Center"
+                    Margin="0,0,10,0"/>
+
+                <!-- Sort Criteria ComboBox -->
+                <ComboBox
+                    x:Name="SortCriteriaCombo"
+                    Grid.Column="1"
+                    SelectionChanged="OnSortCriteriaChanged"
+                    ToolTipService.ToolTip="Select field to sort by">
+                    <ComboBoxItem Content="Order ID" Tag="OrderId" IsSelected="True"/>
+                    <ComboBoxItem Content="Order Value" Tag="FinalPrice"/>
+                    <ComboBoxItem Content="Status" Tag="Status"/>
+                </ComboBox>
+
+                <!-- Sort Order Label -->
+                <TextBlock 
+                    Grid.Column="2"
+                    Text="Order:"
+                    VerticalAlignment="Center"
+                    Margin="20,0,10,0"/>
+
+                <!-- Sort Order ComboBox -->
+                <ComboBox
+                    x:Name="SortOrderCombo"
+                    Grid.Column="3"
+                    SelectionChanged="OnSortOrderChanged"
+                    ToolTipService.ToolTip="Sort ascending or descending">
+                    <ComboBoxItem Content="Ascending" Tag="Asc" IsSelected="True"/>
+                    <ComboBoxItem Content="Descending" Tag="Desc"/>
+                </ComboBox>
+            </Grid>
+        </Border>
+
         <!-- DataGrid Container -->
         <ScrollViewer
-            Grid.Row="2"
+            Grid.Row="3"
             Margin="20,15,20,0"
             MaxHeight="530"
             VerticalScrollBarVisibility="Disabled">
@@ -174,7 +230,7 @@
 
         <!-- Pagination Controls -->
         <Border 
-            Grid.Row="3"
+            Grid.Row="4"
             Padding="20" 
             Background="{ThemeResource LayerFillColorDefaultBrush}"
             BorderThickness="0,1,0,0"

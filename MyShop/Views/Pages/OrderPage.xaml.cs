@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System;
 using System.Linq;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace MyShop.Views.Pages
 {
@@ -21,6 +22,10 @@ namespace MyShop.Views.Pages
         private bool _isLoading = false;
         private ContentDialog? _currentDialog;
         private ObservableCollection<Order> _cachedOrders;
+        private string _sortCriteria = "OrderId";
+        private string _sortOrder = "Asc";
+        private List<Order> _allOrdersForCurrentDateRange = new List<Order>();
+        private bool _isInitialized = false;
 
         public OrderPage()
         {
@@ -35,6 +40,9 @@ namespace MyShop.Views.Pages
             SizeChanged += OrderPage_SizeChanged;
             _currentPage = 1;
             _totalPages = 1;
+            _sortCriteria = "OrderId";
+            _sortOrder = "Asc";
+            _isInitialized = true;
             await LoadOrdersAsync();
         }
 
@@ -53,7 +61,6 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[ORDER_PAGE] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
 
-                // Update padding only - DataGrid handles responsiveness in XAML
                 this.Padding = new Thickness(padding);
             }
             catch (Exception ex)
@@ -76,8 +83,10 @@ namespace MyShop.Views.Pages
                 var toDate = GetToDate();
                 var token = GetAuthToken();
 
-                Debug.WriteLine($"[ORDER_PAGE] Loading orders - Page: {_currentPage}, From: {fromDate}, To: {toDate}");
+                Debug.WriteLine($"[ORDER_PAGE] Loading orders - From: {fromDate}, To: {toDate}");
+                Debug.WriteLine($"[ORDER_PAGE] Sort: {_sortCriteria} ({_sortOrder})");
 
+                // Get total count for pagination
                 var totalCount = await _orderService.GetTotalOrderCountAsync(fromDate, toDate, token);
                 _totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / ORDERS_PER_PAGE) : 1;
                 
@@ -85,14 +94,33 @@ namespace MyShop.Views.Pages
                 ValidateCurrentPage();
                 Debug.WriteLine($"[ORDER_PAGE] Validated page: {_currentPage}");
 
-                var orders = await _orderService.GetOrdersAsync(_currentPage, ORDERS_PER_PAGE, fromDate, toDate, token);
+                // ⭐ KEY FIX: Fetch ALL orders for the date range (not just current page)
+                // Use a large page size to get all orders at once
+                var allOrders = await _orderService.GetOrdersAsync(1, 10000, fromDate, toDate, token);
                 
-                Debug.WriteLine($"[ORDER_PAGE] Retrieved {orders.Count} orders from service");
+                Debug.WriteLine($"[ORDER_PAGE] Retrieved {allOrders.Count} total orders from service");
 
+                // Store all orders for reference
+                _allOrdersForCurrentDateRange = allOrders;
+
+                // Apply sorting to the complete list
+                var sortedOrders = ApplySorting(allOrders);
+
+                Debug.WriteLine($"[ORDER_PAGE] After sorting: {sortedOrders.Count} orders");
+
+                // NOW paginate the sorted results
+                var paginatedOrders = sortedOrders
+                    .Skip((_currentPage - 1) * ORDERS_PER_PAGE)
+                    .Take(ORDERS_PER_PAGE)
+                    .ToList();
+
+                Debug.WriteLine($"[ORDER_PAGE] Paginated to page {_currentPage}: {paginatedOrders.Count} orders");
+
+                // Update UI with paginated results
                 _cachedOrders.Clear();
-                Debug.WriteLine($"[ORDER_PAGE] Cleared cache, adding new orders...");
+                Debug.WriteLine($"[ORDER_PAGE] Cleared cache, adding paginated orders...");
 
-                foreach (var order in orders)
+                foreach (var order in paginatedOrders)
                 {
                     _cachedOrders.Add(order);
                     Debug.WriteLine($"[ORDER_PAGE] Added order #{order.OrderId}");
@@ -116,6 +144,40 @@ namespace MyShop.Views.Pages
                 _isLoading = false;
                 UpdatePaginationControls();
             }
+        }
+
+        /// <summary>
+        /// Apply sorting to the orders based on current criteria and order
+        /// </summary>
+        private List<Order> ApplySorting(List<Order> orders)
+        {
+            IOrderedEnumerable<Order> sortedOrders = null;
+
+            // Apply initial sort based on criteria
+            switch (_sortCriteria)
+            {
+                case "FinalPrice":
+                    sortedOrders = _sortOrder == "Asc"
+                        ? orders.OrderBy(o => o.FinalPrice)
+                        : orders.OrderByDescending(o => o.FinalPrice);
+                    break;
+
+                case "Status":
+                    sortedOrders = _sortOrder == "Asc"
+                        ? orders.OrderBy(o => o.Status)
+                        : orders.OrderByDescending(o => o.Status);
+                    break;
+
+                case "OrderId":
+                default:
+                    sortedOrders = _sortOrder == "Asc"
+                        ? orders.OrderBy(o => o.OrderId)
+                        : orders.OrderByDescending(o => o.OrderId);
+                    break;
+            }
+
+            Debug.WriteLine($"[ORDER_PAGE] ✓ Sorted {orders.Count} orders by {_sortCriteria} ({_sortOrder})");
+            return sortedOrders.ToList();
         }
 
         private DateTime? GetFromDate()
@@ -163,6 +225,13 @@ namespace MyShop.Views.Pages
 
         private void UpdatePaginationControls()
         {
+            // Guard against null reference when page not fully initialized
+            if (!_isInitialized || PageInfoText == null || PreviousButton == null || NextButton == null)
+            {
+                Debug.WriteLine($"[ORDER_PAGE] UpdatePaginationControls called before page initialized, skipping...");
+                return;
+            }
+
             PageInfoText.Text = $"Page {_currentPage} of {_totalPages}";
             PreviousButton.IsEnabled = (_currentPage > 1) && !_isLoading;
             NextButton.IsEnabled = (_currentPage < _totalPages) && !_isLoading;
@@ -368,7 +437,7 @@ namespace MyShop.Views.Pages
 
         private async void OnDateRangeChanged(Microsoft.UI.Xaml.Controls.CalendarDatePicker sender, Microsoft.UI.Xaml.Controls.CalendarDatePickerDateChangedEventArgs e)
         {
-            if (!_isLoading)
+            if (!_isLoading && _isInitialized)
             {
                 _currentPage = 1;
                 await LoadOrdersAsync();
@@ -409,6 +478,44 @@ namespace MyShop.Views.Pages
             _currentPage = 1;
 
             await LoadOrdersAsync();
+        }
+
+        /// <summary>
+        /// Handle sort criteria change
+        /// </summary>
+        private async void OnSortCriteriaChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoading || !_isInitialized)
+                return;
+
+            var selectedItem = SortCriteriaCombo.SelectedItem as ComboBoxItem;
+            if (selectedItem != null)
+            {
+                _sortCriteria = selectedItem.Tag.ToString();
+                Debug.WriteLine($"[ORDER_PAGE] Sort criteria changed to: {_sortCriteria}");
+                
+                _currentPage = 1;
+                await LoadOrdersAsync();
+            }
+        }
+
+        /// <summary>
+        /// Handle sort order change
+        /// </summary>
+        private async void OnSortOrderChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoading || !_isInitialized)
+                return;
+
+            var selectedItem = SortOrderCombo.SelectedItem as ComboBoxItem;
+            if (selectedItem != null)
+            {
+                _sortOrder = selectedItem.Tag.ToString();
+                Debug.WriteLine($"[ORDER_PAGE] Sort order changed to: {_sortOrder}");
+                
+                _currentPage = 1;
+                await LoadOrdersAsync();
+            }
         }
     }
 }
