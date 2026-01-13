@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Contracts;
 using MyShop.Data.Models;
+using MyShop.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -16,6 +17,7 @@ namespace MyShop.Views.Pages
     {
         private readonly IOrderService _orderService;
         private readonly ISessionService _sessionService;
+        private readonly OrderExportService _exportService;
         private Order? _currentOrder;
         private ObservableCollection<OrderItem> _orderItems;
 
@@ -52,6 +54,7 @@ namespace MyShop.Views.Pages
             this.InitializeComponent();
             _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
             _sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
+            _exportService = new OrderExportService();
             _orderItems = new ObservableCollection<OrderItem>();
             this.DataContext = this;
         }
@@ -127,6 +130,46 @@ namespace MyShop.Views.Pages
             if (Frame.CanGoBack)
             {
                 Frame.GoBack();
+            }
+        }
+
+        private async void OnExportToPdfClicked(object sender, RoutedEventArgs e)
+        {
+            if (CurrentOrder == null)
+            {
+                await ShowErrorAsync("No order to export.");
+                return;
+            }
+
+            try
+            {
+                Debug.WriteLine($"[ORDER_DETAILS] Exporting order #{CurrentOrder.OrderId} to PDF...");
+                await _exportService.ExportOrderAsync(CurrentOrder, this.XamlRoot, "pdf");
+                Debug.WriteLine($"[ORDER_DETAILS] ✓ Export completed");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ORDER_DETAILS] ✗ Export failed: {ex.Message}");
+            }
+        }
+
+        private async void OnExportToXpsClicked(object sender, RoutedEventArgs e)
+        {
+            if (CurrentOrder == null)
+            {
+                await ShowErrorAsync("No order to export.");
+                return;
+            }
+
+            try
+            {
+                Debug.WriteLine($"[ORDER_DETAILS] Exporting order #{CurrentOrder.OrderId} to XPS...");
+                await _exportService.ExportOrderAsync(CurrentOrder, this.XamlRoot, "xps");
+                Debug.WriteLine($"[ORDER_DETAILS] ✓ Export completed");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ORDER_DETAILS] ✗ Export failed: {ex.Message}");
             }
         }
 

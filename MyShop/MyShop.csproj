@@ -12,6 +12,7 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
   <ItemGroup>
     <None Remove="Views\Pages\AddOrderPage.xaml" />
     <None Remove="Views\Pages\DashboardPage.xaml" />
@@ -21,6 +22,7 @@
     <None Remove="Views\Pages\OrderDetailsPage.xaml" />
     <None Remove="Views\Pages\ProductSelectionDialog.xaml" />
   </ItemGroup>
+
   <ItemGroup>
     <Page Remove="Views\OrdersPage.xaml" />
   </ItemGroup>
@@ -34,7 +36,7 @@
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
   </ItemGroup>
- 
+
   <ItemGroup>
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -45,14 +47,10 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
-  <!--
-    Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
-    Tools extension to be activated for this project even if the Windows App SDK Nuget
-    package has not yet been restored.
-  -->
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />
   </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
@@ -65,8 +63,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7175" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
-      <PackageReference Include="BCrypt.Net-Next" Version="4.0.2" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.2" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+    <PackageReference Include="QuestPDF" Version="2024.12.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -97,16 +96,10 @@
     </None>
   </ItemGroup>
 
-  <!--
-    Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
-    Explorer "Package and Publish" context menu entry to be enabled for this project even if
-    the Windows App SDK Nuget package has not yet been restored.
-  -->
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
   </PropertyGroup>
 
-  <!-- Publish Properties -->
   <PropertyGroup>
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
