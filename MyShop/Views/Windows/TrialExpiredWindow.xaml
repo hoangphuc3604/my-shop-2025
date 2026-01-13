@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="MyShop.Views.Windows.TrialExpiredWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="License Required - MyShop">
+
+    <Grid Padding="30" RowSpacing="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Icon -->
+        <TextBlock 
+            Grid.Row="0"
+            Text="🔒"
+            FontSize="48"
+            HorizontalAlignment="Center"/>
+
+        <!-- Title -->
+        <TextBlock
+            Grid.Row="1"
+            Text="Trial Period Expired"
+            Style="{StaticResource HeaderTextBlockStyle}"
+            HorizontalAlignment="Center"/>
+
+        <!-- Message -->
+        <TextBlock
+            Grid.Row="2"
+            Text="Your 15-day trial has ended. Please enter your activation code to continue using MyShop."
+            TextWrapping="Wrap"
+            Style="{StaticResource BodyTextBlockStyle}"
+            HorizontalAlignment="Center"
+            TextAlignment="Center"/>
+
+        <!-- Activation Code Input -->
+        <StackPanel Grid.Row="3" Spacing="10">
+            <TextBlock Text="Activation Code:" FontWeight="SemiBold"/>
+            <TextBox
+                x:Name="ActivationCodeBox"
+                PlaceholderText="Enter your activation code (e.g., MYSHOP-2025-TRIAL)"
+                Height="44"/>
+        </StackPanel>
+
+        <!-- Info -->
+        <StackPanel Grid.Row="4" Spacing="15" VerticalAlignment="Center">
+            <TextBlock
+                Text="To get an activation code:"
+                FontWeight="SemiBold"
+                Foreground="{ThemeResource TextFillColorSecondary}"/>
+
+            <StackPanel Spacing="8" Margin="20,0,0,0">
+                <TextBlock Text="✓ Purchase a license" TextWrapping="Wrap"/>
+                <TextBlock Text="✓ Contact support@myshop.com" TextWrapping="Wrap"/>
+                <TextBlock Text="✓ Email: support@myshop.com" TextWrapping="Wrap" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <Button
+                Content="Exit"
+                Click="OnExitClicked"/>
+            <Button
+                Content="Activate"
+                Click="OnActivateClicked"
+                Style="{StaticResource AccentButtonStyle}"/>
+        </StackPanel>
+    </Grid>
+</Window>

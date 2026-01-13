@@ -54,6 +54,10 @@ public partial class App : Application
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<ISessionService, SessionService>();
 
+            //Trial License Service
+            services.AddSingleton<ITrialLicenseService, TrialLicenseService>();
+            services.AddTransient<TrialExpiredWindow>();
+
             // ViewModels and Views
             services.AddTransient<LoginViewModel>();
             services.AddTransient<ProductViewModel>();
@@ -75,7 +79,32 @@ public partial class App : Application
         {
             if (_serviceProvider != null)
             {
-                // Test GraphQL connection
+                // ⭐ CHECK TRIAL STATUS FIRST
+                var trialService = _serviceProvider.GetService<ITrialLicenseService>();
+                
+                // 🆕 UNCOMMENT THIS LINE TO TEST EXPIRED TRIAL
+                /*trialService!.SetTrialExpirationToNow();*/
+                
+                var trialStatus = trialService!.GetTrialStatus();
+                var remainingDays = trialService.GetRemainingTrialDays();
+                Debug.WriteLine($"[APP] Trial Status: {trialStatus}, Remaining: {remainingDays} days");
+
+                // If trial expired and not activated, show activation window
+                if (trialStatus == TrialStatus.Expired)
+                {
+                    Debug.WriteLine("[APP] Trial expired - showing activation window");
+                    _window = _serviceProvider.GetService<TrialExpiredWindow>();
+                    _window?.Activate();
+                    return;
+                }
+
+                // Show trial warning if few days left
+                if (trialStatus == TrialStatus.Active && remainingDays <= 3)
+                {
+                    Debug.WriteLine($"[APP] ⚠ Only {remainingDays} days left in trial");
+                }
+
+                // Normal login flow
                 var graphqlEndpoint = _serviceProvider.GetService<IConfiguration>()?["GraphQL:Endpoint"] 
                     ?? "http://localhost:4000";
                 Debug.WriteLine("[APP] Testing GraphQL connection...");
@@ -84,7 +113,6 @@ public partial class App : Application
                 if (!isConnected)
                 {
                     Debug.WriteLine("[APP] WARNING: Cannot connect to GraphQL backend!");
-                    Debug.WriteLine("[APP] Please ensure the backend server is running");
                 }
 
                 _navigationService = _serviceProvider.GetService<INavigationService>();
@@ -92,7 +120,6 @@ public partial class App : Application
 
                 var sessionService = _serviceProvider.GetService<ISessionService>();
                 
-                // Check if user has valid session and token
                 if (sessionService!.HasValidSession() && sessionService.HasValidToken())
                 {
                     Debug.WriteLine("[APP] ✓ Valid session and token found, loading main window");
@@ -109,7 +136,6 @@ public partial class App : Application
         catch (Exception ex)
         {
             Debug.WriteLine($"[APP] Launch error: {ex.Message}");
-            Debug.WriteLine($"[APP] Stack trace: {ex.StackTrace}");
         }
     }
 
