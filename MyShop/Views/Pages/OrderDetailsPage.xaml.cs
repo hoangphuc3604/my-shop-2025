@@ -62,10 +62,35 @@ namespace MyShop.Views.Pages
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            SizeChanged += OrderDetailsPage_SizeChanged;
 
             if (e.Parameter is Order order)
             {
                 await LoadOrderDetailsAsync(order);
+            }
+        }
+
+        private void OrderDetailsPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
+        }
+
+        private void ApplyResponsiveLayout(double width, double height)
+        {
+            try
+            {
+                var viewportSize = ResponsiveService.GetCurrentViewportSize(width, height);
+                var isCompact = ResponsiveService.IsCompactLayout(width);
+                var padding = ResponsiveService.GetOptimalPadding(width);
+
+                Debug.WriteLine($"[ORDER_DETAILS] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
+
+                // Update padding
+                this.Padding = new Thickness(padding);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ORDER_DETAILS] Error applying responsive layout: {ex.Message}");
             }
         }
 

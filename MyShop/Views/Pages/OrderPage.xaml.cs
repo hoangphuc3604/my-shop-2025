@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Contracts;
 using MyShop.Data.Models;
+using MyShop.Services;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System;
@@ -31,10 +32,34 @@ namespace MyShop.Views.Pages
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {   
             base.OnNavigatedTo(e);
-            
+            SizeChanged += OrderPage_SizeChanged;
             _currentPage = 1;
             _totalPages = 1;
             await LoadOrdersAsync();
+        }
+
+        private void OrderPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
+        }
+
+        private void ApplyResponsiveLayout(double width, double height)
+        {
+            try
+            {
+                var viewportSize = ResponsiveService.GetCurrentViewportSize(width, height);
+                var isCompact = ResponsiveService.IsCompactLayout(width);
+                var padding = ResponsiveService.GetOptimalPadding(width);
+
+                Debug.WriteLine($"[ORDER_PAGE] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
+
+                // Update padding only - DataGrid handles responsiveness in XAML
+                this.Padding = new Thickness(padding);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ORDER_PAGE] Error applying responsive layout: {ex.Message}");
+            }
         }
 
         private async Task LoadOrdersAsync()
@@ -53,28 +78,20 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[ORDER_PAGE] Loading orders - Page: {_currentPage}, From: {fromDate}, To: {toDate}");
 
-                // Get total count first
                 var totalCount = await _orderService.GetTotalOrderCountAsync(fromDate, toDate, token);
                 _totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / ORDERS_PER_PAGE) : 1;
                 
                 Debug.WriteLine($"[ORDER_PAGE] Total count: {totalCount}, Total pages: {_totalPages}");
-                
-                // Validate current page against new total pages
                 ValidateCurrentPage();
-                
                 Debug.WriteLine($"[ORDER_PAGE] Validated page: {_currentPage}");
 
-                // Get orders for current page
                 var orders = await _orderService.GetOrdersAsync(_currentPage, ORDERS_PER_PAGE, fromDate, toDate, token);
                 
                 Debug.WriteLine($"[ORDER_PAGE] Retrieved {orders.Count} orders from service");
 
-                // Clear the collection completely
                 _cachedOrders.Clear();
-                
                 Debug.WriteLine($"[ORDER_PAGE] Cleared cache, adding new orders...");
 
-                // Add new orders
                 foreach (var order in orders)
                 {
                     _cachedOrders.Add(order);
@@ -83,7 +100,6 @@ namespace MyShop.Views.Pages
                 
                 Debug.WriteLine($"[ORDER_PAGE] Cache now contains {_cachedOrders.Count} orders");
 
-                // Force DataGrid to refresh
                 OrdersDataGrid.ItemsSource = null;
                 OrdersDataGrid.ItemsSource = _cachedOrders;
                 
@@ -104,16 +120,13 @@ namespace MyShop.Views.Pages
 
         private DateTime? GetFromDate()
         {
-            return FromDatePicker.Date.HasValue
-                ? FromDatePicker.Date.Value.DateTime
-                : null;
+            return FromDatePicker.Date.HasValue ? FromDatePicker.Date.Value.DateTime : null;
         }
 
         private DateTime? GetToDate()
         {
             if (!ToDatePicker.Date.HasValue)
                 return null;
-
             return ToDatePicker.Date.Value.DateTime.AddDays(1);
         }
 
@@ -316,16 +329,10 @@ namespace MyShop.Views.Pages
                 if (success)
                 {
                     Debug.WriteLine($"[ORDER_PAGE] ✓ Order #{orderId} deleted successfully");
-                    
-                    // Show success dialog first
                     await ShowSuccessDialogAsync($"Order #{orderId} deleted successfully!");
-
-                    // THEN reset pagination and reload
                     _currentPage = 1;
                     _totalPages = 1;
-                    _isLoading = false; // Reset before reload
-                    
-                    // Load fresh data
+                    _isLoading = false;
                     await LoadOrdersAsync();
                 }
                 else

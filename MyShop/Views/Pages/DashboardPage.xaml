@@ -7,14 +7,14 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <Grid RowSpacing="0">
+    <Grid RowSpacing="0" x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Padding="20" Background="{ThemeResource SystemChromeLowColor}">
+        <StackPanel Grid.Row="0" Padding="20" Background="{ThemeResource SystemChromeLowColor}" x:Name="HeaderPanel">
             <TextBlock Text="Dashboard" Style="{StaticResource HeaderTextBlockStyle}" Margin="0,0,0,10"/>
             <TextBlock Text="Overview of sales, inventory, and business metrics" Style="{StaticResource SubtitleTextBlockStyle}" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
         </StackPanel>
@@ -27,7 +27,7 @@
                 <ProgressRing x:Name="LoadingProgressRing" IsActive="True" Width="40" Height="40" HorizontalAlignment="Center"/>
 
                 <!-- Summary Cards -->
-                <StackPanel Spacing="15">
+                <StackPanel Spacing="15" x:Name="SummaryPanel">
                     <TextBlock Text="Key Metrics" Style="{StaticResource SubheaderTextBlockStyle}"/>
                     
                     <Grid ColumnSpacing="15">

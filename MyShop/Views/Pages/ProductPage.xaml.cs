@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
+using MyShop.Services;
 using MyShop.ViewModels;
 using System;
 using System.Diagnostics;
@@ -17,14 +18,13 @@ namespace MyShop.Views.Pages
         public ProductPage()
         {
             this.InitializeComponent();
-            
-            // Get ViewModel from DI
             ViewModel = (App.Services.GetService(typeof(ProductViewModel)) as ProductViewModel)!;
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            SizeChanged += ProductPage_SizeChanged;
 
             try
             {
@@ -39,15 +39,34 @@ namespace MyShop.Views.Pages
             }
         }
 
-        /// <summary>
-        /// Update UI state based on ViewModel (loading, empty, content)
-        /// </summary>
+        private void ProductPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
+        }
+
+        private void ApplyResponsiveLayout(double width, double height)
+        {
+            try
+            {
+                var viewportSize = ResponsiveService.GetCurrentViewportSize(width, height);
+                var isCompact = ResponsiveService.IsCompactLayout(width);
+                var padding = ResponsiveService.GetOptimalPadding(width);
+
+                Debug.WriteLine($"[PRODUCT_PAGE] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
+
+                // Update padding only - layout is already responsive in XAML
+                this.Padding = new Thickness(padding);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT_PAGE] Error applying responsive layout: {ex.Message}");
+            }
+        }
+
         private void UpdateUIState()
         {
-            // Show/hide loading indicator
             LoadingPanel.Visibility = ViewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
             
-            // Show/hide empty state
             if (!ViewModel.IsLoading && ViewModel.Products.Count == 0)
             {
                 EmptyStatePanel.Visibility = Visibility.Visible;
@@ -59,8 +78,6 @@ namespace MyShop.Views.Pages
                 ProductsListView.Visibility = Visibility.Visible;
             }
         }
-
-        // ===== Event Handlers =====
 
         private async void OnCategoryFilterChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -82,7 +99,6 @@ namespace MyShop.Views.Pages
 
         private async void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
         {
-            // Use fully qualified name to avoid namespace confusion
             if (e.Key == global::Windows.System.VirtualKey.Enter)
             {
                 if (ViewModel.SearchCommand.CanExecute(null))
@@ -101,12 +117,9 @@ namespace MyShop.Views.Pages
                 if (button?.Tag is int productId)
                 {
                     Debug.WriteLine($"[PRODUCT_PAGE] View product #{productId}");
-                    
-                    // Find product
                     var product = ViewModel.Products.FirstOrDefault(p => p.ProductId == productId);
                     if (product != null)
                     {
-                        // TODO: Open ProductDetailsDialog
                         await ShowInfoDialog("View Product", $"Viewing product: {product.Name}\n\nDetails dialog will be implemented next.");
                     }
                 }
@@ -126,12 +139,9 @@ namespace MyShop.Views.Pages
                 if (button?.Tag is int productId)
                 {
                     Debug.WriteLine($"[PRODUCT_PAGE] Edit product #{productId}");
-                    
-                    // Find product
                     var product = ViewModel.Products.FirstOrDefault(p => p.ProductId == productId);
                     if (product != null)
                     {
-                        // TODO: Open EditProductDialog
                         await ShowInfoDialog("Edit Product", 
                             $"Editing product: {product.Name}\n\n" +
                             "✓ UI is ready\n" +
@@ -155,12 +165,9 @@ namespace MyShop.Views.Pages
                 if (button?.Tag is int productId)
                 {
                     Debug.WriteLine($"[PRODUCT_PAGE] Delete product #{productId}");
-                    
-                    // Find product
                     var product = ViewModel.Products.FirstOrDefault(p => p.ProductId == productId);
                     if (product != null)
                     {
-                        // Show confirmation dialog
                         var confirmed = await ShowConfirmDialog(
                             "Delete Product",
                             $"Are you sure you want to delete '{product.Name}'?\n\n" +
@@ -188,8 +195,6 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Add new product");
-                
-                // TODO: Open AddProductDialog
                 await ShowInfoDialog("Add Product",
                     "✓ UI is ready\n" +
                     "⚠ Backend mutation not yet implemented\n\n" +
@@ -207,8 +212,6 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Add new category");
-                
-                // TODO: Open AddCategoryDialog
                 await ShowInfoDialog("Add Category",
                     "✓ UI is ready\n" +
                     "⚠ Backend mutation not yet implemented\n\n" +
@@ -226,8 +229,6 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Import products");
-                
-                // TODO: Open ImportProductsDialog
                 await ShowInfoDialog("Import Products",
                     "Import feature is planned for future implementation.\n\n" +
                     "Supported formats:\n" +
@@ -241,8 +242,6 @@ namespace MyShop.Views.Pages
                 await ShowErrorDialog("Error", $"Failed to import products: {ex.Message}");
             }
         }
-
-        // ===== Helper Methods =====
 
         private async Task<bool> ShowConfirmDialog(string title, string message)
         {

@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using MyShop.Contracts;
 using MyShop.Data.Models;
+using MyShop.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,8 +39,34 @@ namespace MyShop.Views.Pages
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            SizeChanged += ReportPage_SizeChanged;
             await LoadProductsAsync();
             await GenerateReportAsync();
+        }
+
+        private void ReportPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
+            RedrawCharts();
+        }
+
+        private void ApplyResponsiveLayout(double width, double height)
+        {
+            try
+            {
+                var viewportSize = ResponsiveService.GetCurrentViewportSize(width, height);
+                var isCompact = ResponsiveService.IsCompactLayout(width);
+                var padding = ResponsiveService.GetOptimalPadding(width);
+
+                Debug.WriteLine($"[REPORT] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
+
+                // Update padding
+                this.Padding = new Thickness(padding);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[REPORT] Error applying responsive layout: {ex.Message}");
+            }
         }
 
         private async Task LoadProductsAsync()
@@ -49,7 +76,6 @@ namespace MyShop.Views.Pages
                 var token = _sessionService?.GetAuthToken();
                 _allProducts = await _productService.GetProductsAsync(1, 1000, null, null, null, null, null, token);
                 
-                // Populate product combo - sorted by ID
                 foreach (var product in _allProducts.OrderBy(p => p.ProductId))
                 {
                     ProductCombo.Items.Add(new ComboBoxItem 
@@ -61,7 +87,7 @@ namespace MyShop.Views.Pages
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[DASHBOARD] Error loading products: {ex.Message}");
+                Debug.WriteLine($"[REPORT] Error loading products: {ex.Message}");
             }
         }
 
@@ -104,8 +130,8 @@ namespace MyShop.Views.Pages
                 var toDate = ToDatePicker.Date?.DateTime.AddDays(1);
                 var token = _sessionService?.GetAuthToken();
 
-                Debug.WriteLine("[DASHBOARD] Generating report...");
-                Debug.WriteLine($"[DASHBOARD] Date Range: {fromDate} to {toDate}");
+                Debug.WriteLine("[REPORT] Generating report...");
+                Debug.WriteLine($"[REPORT] Date Range: {fromDate} to {toDate}");
 
                 _currentReport = await _reportService.GenerateRevenueReportAsync(fromDate, toDate, token);
 
@@ -115,11 +141,11 @@ namespace MyShop.Views.Pages
 
                 RedrawCharts();
 
-                Debug.WriteLine("[DASHBOARD] ✓ Report generated successfully");
+                Debug.WriteLine("[REPORT] ✓ Report generated successfully");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[DASHBOARD] ✗ Error generating report: {ex.Message}");
+                Debug.WriteLine($"[REPORT] ✗ Error generating report: {ex.Message}");
                 await ShowErrorAsync($"Failed to generate report: {ex.Message}");
             }
             finally
@@ -135,7 +161,6 @@ namespace MyShop.Views.Pages
 
             var timePeriod = (TimePeriodCombo.SelectedItem as ComboBoxItem)?.Tag.ToString() ?? "Day";
             
-            // Draw revenue chart
             if (timePeriod == "Day" && _currentReport.DailyRevenues.Count > 0)
             {
                 NoDataMessageRevenue.Visibility = Visibility.Collapsed;
@@ -170,7 +195,6 @@ namespace MyShop.Views.Pages
                 RevenueChartCanvas.Children.Clear();
             }
 
-            // Draw quantity chart - filter by product selection
             if (timePeriod == "Day" && _currentReport.DailyRevenues.Count > 0)
             {
                 NoDataMessageQuantity.Visibility = Visibility.Collapsed;
@@ -225,52 +249,32 @@ namespace MyShop.Views.Pages
         private int GetProductQuantity(DailyRevenue daily, int productId)
         {
             if (productId < 0)
-            {
                 return daily.TotalQuantity;
-            }
-
-            var productQuantity = daily.ProductQuantities
-                .FirstOrDefault(pq => pq.ProductId == productId);
-
+            var productQuantity = daily.ProductQuantities.FirstOrDefault(pq => pq.ProductId == productId);
             return productQuantity?.Quantity ?? 0;
         }
 
         private int GetProductQuantity(WeeklyRevenue weekly, int productId)
         {
             if (productId < 0)
-            {
                 return weekly.TotalQuantity;
-            }
-
-            var productQuantity = weekly.ProductQuantities
-                .FirstOrDefault(pq => pq.ProductId == productId);
-
+            var productQuantity = weekly.ProductQuantities.FirstOrDefault(pq => pq.ProductId == productId);
             return productQuantity?.Quantity ?? 0;
         }
 
         private int GetProductQuantity(MonthlyRevenue monthly, int productId)
         {
             if (productId < 0)
-            {
                 return monthly.TotalQuantity;
-            }
-
-            var productQuantity = monthly.ProductQuantities
-                .FirstOrDefault(pq => pq.ProductId == productId);
-
+            var productQuantity = monthly.ProductQuantities.FirstOrDefault(pq => pq.ProductId == productId);
             return productQuantity?.Quantity ?? 0;
         }
 
         private int GetProductQuantity(YearlyRevenue yearly, int productId)
         {
             if (productId < 0)
-            {
                 return yearly.TotalQuantity;
-            }
-
-            var productQuantity = yearly.ProductQuantities
-                .FirstOrDefault(pq => pq.ProductId == productId);
-
+            var productQuantity = yearly.ProductQuantities.FirstOrDefault(pq => pq.ProductId == productId);
             return productQuantity?.Quantity ?? 0;
         }
 
@@ -285,21 +289,22 @@ namespace MyShop.Views.Pages
 
                 var width = canvas.ActualWidth;
                 var height = canvas.ActualHeight;
-                var leftPadding = 70;
+                
+                // Responsive padding - reduce on smaller screens
+                var leftPadding = width < 600 ? 40 : width < 1000 ? 50 : 70;
                 var rightPadding = 20;
                 var topPadding = 20;
-                var bottomPadding = 50;
+                var bottomPadding = width < 600 ? 35 : width < 1000 ? 40 : 50;
+                
                 var chartWidth = width - leftPadding - rightPadding;
                 var chartHeight = height - topPadding - bottomPadding;
 
                 var maxValue = data.Max(d => valueFunc(d));
                 var minValue = 0;
 
-                // Draw axes
                 DrawLine(canvas, leftPadding, height - bottomPadding, width - rightPadding, height - bottomPadding, Colors.White, 1);
                 DrawLine(canvas, leftPadding, topPadding, leftPadding, height - bottomPadding, Colors.White, 1);
 
-                // Draw bars
                 var barCount = data.Count;
                 var barWidth = chartWidth / barCount;
                 var spacing = barWidth * 0.15;
@@ -315,20 +320,16 @@ namespace MyShop.Views.Pages
                     var barHeight = (value - minValue) / (double)maxValue * chartHeight;
                     var y = height - bottomPadding - barHeight;
 
-                    // Draw bar
                     DrawRectangle(canvas, x, y, actualBarWidth, barHeight, Colors.DodgerBlue);
 
-                    // Draw label centered below bar
                     var labelWidth = label.Length * 6;
                     DrawText(canvas, x + (actualBarWidth / 2) - (labelWidth / 2), height - bottomPadding + 10, label, Colors.White);
 
-                    // Draw value centered above bar
                     var valueText = $"{value:#,0}";
                     var valueWidth = valueText.Length * 5;
                     DrawText(canvas, x + (actualBarWidth / 2) - (valueWidth / 2), y - 20, valueText, Colors.White);
                 }
 
-                // Draw Y-axis labels (outside chart)
                 for (int i = 0; i <= 5; i++)
                 {
                     var value = (maxValue / 5.0) * i;
@@ -339,7 +340,7 @@ namespace MyShop.Views.Pages
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[DASHBOARD] Error drawing revenue chart: {ex.Message}");
+                Debug.WriteLine($"[REPORT] Error drawing revenue chart: {ex.Message}");
             }
         }
 
@@ -354,10 +355,13 @@ namespace MyShop.Views.Pages
 
                 var width = canvas.ActualWidth;
                 var height = canvas.ActualHeight;
-                var leftPadding = 70;
+                
+                // Responsive padding
+                var leftPadding = width < 600 ? 40 : width < 1000 ? 50 : 70;
                 var rightPadding = 20;
                 var topPadding = 20;
-                var bottomPadding = 50;
+                var bottomPadding = width < 600 ? 35 : width < 1000 ? 40 : 50;
+                
                 var chartWidth = width - leftPadding - rightPadding;
                 var chartHeight = height - topPadding - bottomPadding;
 
@@ -366,11 +370,9 @@ namespace MyShop.Views.Pages
                 var range = maxValue - minValue;
                 if (range == 0) range = maxValue;
 
-                // Draw axes
                 DrawLine(canvas, leftPadding, height - bottomPadding, width - rightPadding, height - bottomPadding, Colors.White, 1);
                 DrawLine(canvas, leftPadding, topPadding, leftPadding, height - bottomPadding, Colors.White, 1);
 
-                // Draw points
                 var pointsCount = data.Count;
                 var xSpacing = pointsCount > 1 ? chartWidth / (pointsCount - 1) : chartWidth;
                 var pointData = new List<(double x, double y, dynamic item)>();
@@ -384,7 +386,6 @@ namespace MyShop.Views.Pages
 
                     pointData.Add((x, y, item));
 
-                    // Draw point with hover effect
                     var circle = new Ellipse 
                     { 
                         Width = 8, 
@@ -404,13 +405,11 @@ namespace MyShop.Views.Pages
                     
                     canvas.Children.Add(circle);
 
-                    // Draw label centered below point
                     var label = labelFunc(item);
                     var labelWidth = label.Length * 6;
                     DrawText(canvas, x - (labelWidth / 2), height - bottomPadding + 10, label, Colors.White);
                 }
 
-                // Connect points with lines
                 for (int i = 0; i < pointsCount - 1; i++)
                 {
                     var x1 = pointData[i].x;
@@ -421,7 +420,6 @@ namespace MyShop.Views.Pages
                     DrawLine(canvas, x1, y1, x2, y2, Colors.LimeGreen, 2);
                 }
 
-                // Draw Y-axis labels starting from 0
                 for (int i = 0; i <= 5; i++)
                 {
                     var value = minValue + (range / 5.0 * i);
@@ -432,14 +430,13 @@ namespace MyShop.Views.Pages
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[DASHBOARD] Error drawing quantity chart: {ex.Message}");
+                Debug.WriteLine($"[REPORT] Error drawing quantity chart: {ex.Message}");
             }
         }
 
         private void ShowTooltip(Canvas canvas, double x, double y, string value)
         {
             RemoveTooltip(canvas);
-            
             var tooltip = new TextBlock 
             { 
                 Text = value, 

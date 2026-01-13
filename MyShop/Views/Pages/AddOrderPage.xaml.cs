@@ -3,12 +3,15 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Contracts;
 using MyShop.Data.Models;
+using MyShop.Services;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System;
+using System.Diagnostics;
+using CommunityToolkit.WinUI.UI.Controls;
 
 namespace MyShop.Views.Pages
 {
@@ -30,11 +33,92 @@ namespace MyShop.Views.Pages
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            SizeChanged += AddOrderPage_SizeChanged;
 
-            // Only load products if navigating forward, not when going back
             if (e.NavigationMode != NavigationMode.Back)
             {
                 await LoadProductsAsync();
+            }
+        }
+
+        private void AddOrderPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
+        }
+
+        private void ApplyResponsiveLayout(double width, double height)
+        {
+            try
+            {
+                var viewportSize = ResponsiveService.GetCurrentViewportSize(width, height);
+                var isCompact = ResponsiveService.IsCompactLayout(width);
+                var padding = ResponsiveService.GetOptimalPadding(width);
+
+                Debug.WriteLine($"[ADD_ORDER_PAGE] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
+
+                // Adjust DataGrid column widths for responsive display
+                if (ProductsDataGrid?.Columns.Count > 0)
+                {
+                    if (isCompact)
+                    {
+                        // Mobile: Show only essential columns, reduce width
+                        foreach (var column in ProductsDataGrid.Columns)
+                        {
+                            if (column.Header?.ToString() == "Description" || column.Header?.ToString() == "Category")
+                            {
+                                column.Visibility = Visibility.Collapsed;
+                            }
+                            else
+                            {
+                                column.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Desktop: Show all columns with appropriate widths
+                        foreach (var column in ProductsDataGrid.Columns)
+                        {
+                            column.Visibility = Visibility.Visible;
+                            column.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+                        }
+                    }
+                }
+
+                // Adjust search box and summary panel layout
+                if (TopPanel != null)
+                {
+                    TopPanel.Padding = new Thickness(padding);
+                }
+
+                if (SummaryPanel != null)
+                {
+                    SummaryPanel.Padding = new Thickness(padding);
+                }
+
+                // Adjust button sizing for compact layouts
+                if (isCompact)
+                {
+                    // Make buttons stack or adjust sizing for mobile
+                    if (ButtonPanel != null)
+                    {
+                        ButtonPanel.Orientation = Orientation.Vertical;
+                    }
+                }
+                else
+                {
+                    // Horizontal button layout for desktop
+                    if (ButtonPanel != null)
+                    {
+                        ButtonPanel.Orientation = Orientation.Horizontal;
+                    }
+                }
+
+                this.Padding = new Thickness(padding);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ADD_ORDER_PAGE] Error applying responsive layout: {ex.Message}");
             }
         }
 
@@ -49,7 +133,6 @@ namespace MyShop.Views.Pages
             {
                 var token = GetAuthToken();
 
-                // Get all products (page 1, large page size to get all)
                 var products = await _productService.GetProductsAsync(
                     page: 1,
                     pageSize: 1000,
@@ -145,7 +228,6 @@ namespace MyShop.Views.Pages
             {
                 var token = GetAuthToken();
 
-                // Build order items from selected products
                 var orderItems = selectedProducts
                     .Select(s => new OrderItemInput
                     {
@@ -159,25 +241,20 @@ namespace MyShop.Views.Pages
                     OrderItems = orderItems
                 };
 
-                System.Diagnostics.Debug.WriteLine("[ADD_ORDER_PAGE] Creating order...");
+                Debug.WriteLine("[ADD_ORDER_PAGE] Creating order...");
 
-                // Create order via GraphQL API
                 var newOrder = await _orderService.CreateOrderAsync(createOrderInput, token);
 
-                System.Diagnostics.Debug.WriteLine($"[ADD_ORDER_PAGE] Order creation result: {(newOrder != null ? "Success" : "Null")}");
+                Debug.WriteLine($"[ADD_ORDER_PAGE] Order creation result: {(newOrder != null ? "Success" : "Null")}");
 
-                // Check if order was created successfully
                 if (newOrder != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ADD_ORDER_PAGE] ✓ Order #{newOrder.OrderId} created successfully");
+                    Debug.WriteLine($"[ADD_ORDER_PAGE] ✓ Order #{newOrder.OrderId} created successfully");
                     
-                    // Show success dialog
                     await ShowSuccessAsync($"Order #{newOrder.OrderId} created successfully with {selectedProducts.Count} product(s)!");
 
-                    // Reset _isLoading BEFORE navigating back
                     _isLoading = false;
                     
-                    // Navigate back after dialog closes
                     if (Frame.CanGoBack)
                     {
                         Frame.GoBack();
@@ -185,14 +262,14 @@ namespace MyShop.Views.Pages
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("[ADD_ORDER_PAGE] ✗ newOrder is null - response parsing failed");
+                    Debug.WriteLine("[ADD_ORDER_PAGE] ✗ newOrder is null - response parsing failed");
                     await ShowErrorAsync("Failed to create order. The response from the server could not be parsed. Please try again.");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ADD_ORDER_PAGE] ✗ Exception: {ex.GetType().Name} - {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[ADD_ORDER_PAGE] ✗ Stack: {ex.StackTrace}");
+                Debug.WriteLine($"[ADD_ORDER_PAGE] ✗ Exception: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[ADD_ORDER_PAGE] ✗ Stack: {ex.StackTrace}");
                 await ShowErrorAsync($"Failed to create order: {ex.Message}");
             }
             finally
@@ -251,17 +328,16 @@ namespace MyShop.Views.Pages
 
         private string? GetAuthToken()
         {
-            // Get token from session storage
             var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
             var token = sessionService?.GetAuthToken();
             
             if (string.IsNullOrEmpty(token))
             {
-                System.Diagnostics.Debug.WriteLine("[ADD_ORDER_PAGE] ✗ No authentication token available");
+                Debug.WriteLine("[ADD_ORDER_PAGE] ✗ No authentication token available");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("[ADD_ORDER_PAGE] ✓ Authentication token retrieved");
+                Debug.WriteLine("[ADD_ORDER_PAGE] ✓ Authentication token retrieved");
             }
             
             return token;

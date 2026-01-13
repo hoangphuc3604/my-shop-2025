@@ -3,12 +3,14 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Contracts;
 using MyShop.Data.Models;
+using MyShop.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace MyShop.Views.Pages
 {
@@ -52,8 +54,8 @@ namespace MyShop.Views.Pages
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            SizeChanged += EditOrderPage_SizeChanged;
 
-            // Only load order if navigating forward, not when going back
             if (e.NavigationMode != NavigationMode.Back)
             {
                 if (e.Parameter is Order order)
@@ -61,6 +63,30 @@ namespace MyShop.Views.Pages
                     _currentOrder = order;
                     await LoadOrderForEditAsync(order);
                 }
+            }
+        }
+
+        private void EditOrderPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
+        }
+
+        private void ApplyResponsiveLayout(double width, double height)
+        {
+            try
+            {
+                var viewportSize = ResponsiveService.GetCurrentViewportSize(width, height);
+                var isCompact = ResponsiveService.IsCompactLayout(width);
+                var padding = ResponsiveService.GetOptimalPadding(width);
+
+                Debug.WriteLine($"[EDIT_ORDER_PAGE] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
+
+                // Update padding
+                this.Padding = new Thickness(padding);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[EDIT_ORDER_PAGE] Error applying responsive layout: {ex.Message}");
             }
         }
 
@@ -90,9 +116,12 @@ namespace MyShop.Views.Pages
                 {
                     OrderItems.Add(new ReadOnlyOrderItem(item));
                 }
+
+                Debug.WriteLine($"[EDIT_ORDER_PAGE] ✓ Order #{order.OrderId} loaded for editing");
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"[EDIT_ORDER_PAGE] ✗ Error loading order: {ex.Message}");
                 await ShowErrorAsync($"Failed to load order: {ex.Message}");
             }
             finally
@@ -117,23 +146,21 @@ namespace MyShop.Views.Pages
             {
                 var token = GetAuthToken();
 
-                System.Diagnostics.Debug.WriteLine("[EDIT_ORDER_PAGE] Updating order status to: " + SelectedStatus);
+                Debug.WriteLine("[EDIT_ORDER_PAGE] Updating order status to: " + SelectedStatus);
 
-                // Build update input with ONLY status
                 var updateInput = new UpdateOrderInput
                 {
                     Status = SelectedStatus,
-                    OrderItems = null // UpdateOrderInput doesn't accept orderItems field
+                    OrderItems = null
                 };
 
-                // Update order via GraphQL API
                 var updatedOrder = await _orderService.UpdateOrderAsync(_currentOrder!.OrderId, updateInput, token);
 
                 if (updatedOrder != null)
                 {
+                    Debug.WriteLine($"[EDIT_ORDER_PAGE] ✓ Order #{_currentOrder.OrderId} status updated successfully");
                     await ShowSuccessAsync($"Order #{_currentOrder.OrderId} status changed to '{SelectedStatus}' successfully!");
 
-                    // Navigate back
                     if (Frame.CanGoBack)
                     {
                         Frame.GoBack();
@@ -141,11 +168,13 @@ namespace MyShop.Views.Pages
                 }
                 else
                 {
+                    Debug.WriteLine("[EDIT_ORDER_PAGE] ✗ Failed to update order");
                     await ShowErrorAsync("Failed to update order. Please try again.");
                 }
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"[EDIT_ORDER_PAGE] ✗ Exception: {ex.Message}");
                 await ShowErrorAsync($"Failed to update order: {ex.Message}");
             }
             finally
@@ -213,17 +242,16 @@ namespace MyShop.Views.Pages
 
         private string? GetAuthToken()
         {
-            // Get token from session storage
             var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
             var token = sessionService?.GetAuthToken();
             
             if (string.IsNullOrEmpty(token))
             {
-                System.Diagnostics.Debug.WriteLine("[EDIT_ORDER_PAGE] ✗ No authentication token available");
+                Debug.WriteLine("[EDIT_ORDER_PAGE] ✗ No authentication token available");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("[EDIT_ORDER_PAGE] ✓ Authentication token retrieved");
+                Debug.WriteLine("[EDIT_ORDER_PAGE] ✓ Authentication token retrieved");
             }
             
             return token;

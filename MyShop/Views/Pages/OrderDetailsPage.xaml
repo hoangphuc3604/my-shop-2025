@@ -9,7 +9,7 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <Grid RowSpacing="0" ColumnSpacing="0">
+    <Grid RowSpacing="0" ColumnSpacing="0" x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -23,7 +23,8 @@
             Padding="20,12,20,12"
             BorderThickness="0,0,0,1"
             BorderBrush="{ThemeResource ControlElevationBorderBrush}"
-            Background="{ThemeResource SystemChromeLowColor}">
+            Background="{ThemeResource SystemChromeLowColor}"
+            x:Name="HeaderPanel">
             <Button
                 Content="← Back"
                 Click="OnBackClicked"
@@ -66,8 +67,8 @@
         <ScrollViewer
             Grid.Row="3"
             VerticalScrollBarVisibility="Auto"
-            Padding="20">
-            <StackPanel Spacing="15">
+            HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="15" Padding="20">
                 <!-- Header Info -->
                 <StackPanel Spacing="6">
                     <TextBlock
