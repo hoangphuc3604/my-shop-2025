@@ -6,6 +6,7 @@ using MyShop.Data.Models;
 using MyShop.Services;
 using MyShop.ViewModels;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
@@ -14,8 +15,12 @@ namespace MyShop.Views.Pages
     public sealed partial class OrderPage : Page
     {
         private OrderViewModel _viewModel;
+        private OnboardingService _onboardingService;
         private ContentDialog? _currentDialog;
         private bool _isInitialized = false;
+        
+        private List<OnboardingStep> _onboardingSteps;
+        private int _currentOnboardingStep = 0;
 
         public OrderPage()
         {
@@ -23,6 +28,8 @@ namespace MyShop.Views.Pages
             
             var orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
             var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
+            _onboardingService = (App.Services.GetService(typeof(OnboardingService)) as OnboardingService)!;
+            
             _viewModel = new OrderViewModel(orderService, sessionService);
             
             DataContext = _viewModel;
@@ -35,12 +42,75 @@ namespace MyShop.Views.Pages
             
             _isInitialized = true;
             await _viewModel.LoadOrdersAsync();
+            
+            // Start onboarding if first time
+            if (!_onboardingService.IsOnboardingCompleted())
+            {
+                StartOnboarding();
+            }
         }
 
         protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
             SizeChanged -= OrderPage_SizeChanged;
+        }
+
+        private void StartOnboarding()
+        {
+            _onboardingSteps = _onboardingService.GetOrderPageSteps();
+            _currentOnboardingStep = 0;
+            ShowCurrentOnboardingStep();
+        }
+
+        private void ShowCurrentOnboardingStep()
+        {
+            if (_currentOnboardingStep >= _onboardingSteps.Count)
+            {
+                CompleteOnboarding();
+                return;
+            }
+
+            var step = _onboardingSteps[_currentOnboardingStep];
+            
+            OnboardingTip.Title = step.Title;
+            OnboardingTip.Subtitle = step.Description;
+            
+            // Find the target element
+            var target = FindName(step.TargetName) as FrameworkElement;
+            if (target != null)
+            {
+                OnboardingTip.Target = target;
+            }
+            
+            // Update button text for last step
+            if (_currentOnboardingStep == _onboardingSteps.Count - 1)
+            {
+                OnboardingTip.ActionButtonContent = "Finish";
+            }
+            else
+            {
+                OnboardingTip.ActionButtonContent = $"Next ({_currentOnboardingStep + 1}/{_onboardingSteps.Count})";
+            }
+            
+            OnboardingTip.IsOpen = true;
+        }
+
+        private void OnOnboardingNextClicked(TeachingTip sender, object args)
+        {
+            _currentOnboardingStep++;
+            ShowCurrentOnboardingStep();
+        }
+
+        private void OnOnboardingSkipClicked(TeachingTip sender, object args)
+        {
+            CompleteOnboarding();
+        }
+
+        private void CompleteOnboarding()
+        {
+            OnboardingTip.IsOpen = false;
+            _onboardingService.MarkOnboardingCompleted();
         }
 
         private void OrderPage_SizeChanged(object sender, SizeChangedEventArgs e)

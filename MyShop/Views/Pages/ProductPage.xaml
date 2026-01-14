@@ -42,7 +42,7 @@
                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+            <StackPanel x:Name="AddProductButton" Grid.Column="1" Orientation="Horizontal" Spacing="8">
                 <Button Content="Add Product" 
                        Click="OnAddProductClick"
                        Style="{StaticResource AccentButtonStyle}">
@@ -100,7 +100,8 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Category Filter -->
-                <ComboBox Grid.Column="0"
+                <ComboBox x:Name="CategoryFilter"
+                         Grid.Column="0"
                          Header="Category"
                          PlaceholderText="All Categories"
                          ItemsSource="{x:Bind ViewModel.Categories, Mode=OneWay}"
@@ -368,5 +369,19 @@
                 </StackPanel>
             </Button>
         </Grid>
+
+        <!-- Onboarding Teaching Tip -->
+        <TeachingTip
+            x:Name="OnboardingTip"
+            Title="Welcome!"
+            Subtitle="Let's get started"
+            ActionButtonContent="Next"
+            ActionButtonClick="OnOnboardingNextClicked"
+            CloseButtonContent="Skip Tour"
+            CloseButtonClick="OnOnboardingSkipClicked"
+            PreferredPlacement="Bottom"
+            IsLightDismissEnabled="False"
+            ShouldConstrainToRootBounds="False">
+        </TeachingTip>
     </Grid>
 </Page>

@@ -294,5 +294,19 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!-- Onboarding Teaching Tip -->
+        <TeachingTip
+            x:Name="OnboardingTip"
+            Title="Welcome!"
+            Subtitle="Let's get started"
+            ActionButtonContent="Next"
+            ActionButtonClick="OnOnboardingNextClicked"
+            CloseButtonContent="Skip Tour"
+            CloseButtonClick="OnOnboardingSkipClicked"
+            PreferredPlacement="Bottom"
+            IsLightDismissEnabled="False"
+            ShouldConstrainToRootBounds="False">
+        </TeachingTip>
     </Grid>
 </Page>

@@ -49,6 +49,7 @@ public partial class App : Application
 
             // UI Services
             services.AddSingleton<DashboardUIService>();
+            services.AddSingleton<OnboardingService>();
 
             // Navigation and Session Services
             services.AddSingleton<INavigationService, NavigationService>();

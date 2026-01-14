@@ -6,6 +6,7 @@ using MyShop.Services;
 using MyShop.ViewModels;
 using MyShop.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,6 +17,10 @@ namespace MyShop.Views.Pages
     {
         public ProductViewModel ViewModel { get; set; }
         private ISessionService? _sessionService;
+        private OnboardingService _onboardingService;
+        
+        private List<OnboardingStep> _onboardingSteps;
+        private int _currentOnboardingStep = 0;
 
         public ProductPage()
         {
@@ -23,6 +28,7 @@ namespace MyShop.Views.Pages
             var viewModel = App.Services.GetService(typeof(ProductViewModel)) as ProductViewModel;
             ViewModel = viewModel ?? throw new InvalidOperationException("ProductViewModel could not be resolved from services");
             _sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
+            _onboardingService = (App.Services.GetService(typeof(OnboardingService)) as OnboardingService)!;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -34,31 +40,82 @@ namespace MyShop.Views.Pages
             {
                 Debug.WriteLine("[PRODUCT_PAGE] OnNavigatedTo - Initializing...");
                 await ViewModel.InitializeAsync();
-                
-                /*// Restore items per page preference
-                if (_sessionService != null)
-                {
-                    var itemsPerPage = _sessionService.GetItemsPerPage();
-                    ViewModel.ItemsPerPage = itemsPerPage;
-                    
-                    // Set the combobox to match
-                    foreach (var item in ItemsPerPageCombo.Items)
-                    {
-                        if (item is ComboBoxItem comboItem && comboItem.Tag?.ToString() == itemsPerPage.ToString())
-                        {
-                            ItemsPerPageCombo.SelectedItem = comboItem;
-                            break;
-                        }
-                    }
-                }*/
-                
                 UpdateUIState();
+                
+                // Start onboarding if first time
+                if (!_onboardingService.IsProductOnboardingCompleted())
+                {
+                    StartOnboarding();
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[PRODUCT_PAGE] Error in OnNavigatedTo: {ex.Message}");
                 await ShowErrorDialog("Initialization Error", $"Failed to load product page: {ex.Message}");
             }
+        }
+
+        protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            SizeChanged -= ProductPage_SizeChanged;
+        }
+
+        private void StartOnboarding()
+        {
+            _onboardingSteps = _onboardingService.GetProductPageSteps();
+            _currentOnboardingStep = 0;
+            ShowCurrentOnboardingStep();
+        }
+
+        private void ShowCurrentOnboardingStep()
+        {
+            if (_currentOnboardingStep >= _onboardingSteps.Count)
+            {
+                CompleteOnboarding();
+                return;
+            }
+
+            var step = _onboardingSteps[_currentOnboardingStep];
+            
+            OnboardingTip.Title = step.Title;
+            OnboardingTip.Subtitle = step.Description;
+            
+            // Find the target element
+            var target = FindName(step.TargetName) as FrameworkElement;
+            if (target != null)
+            {
+                OnboardingTip.Target = target;
+            }
+            
+            // Update button text for last step
+            if (_currentOnboardingStep == _onboardingSteps.Count - 1)
+            {
+                OnboardingTip.ActionButtonContent = "Finish";
+            }
+            else
+            {
+                OnboardingTip.ActionButtonContent = $"Next ({_currentOnboardingStep + 1}/{_onboardingSteps.Count})";
+            }
+            
+            OnboardingTip.IsOpen = true;
+        }
+
+        private void OnOnboardingNextClicked(TeachingTip sender, object args)
+        {
+            _currentOnboardingStep++;
+            ShowCurrentOnboardingStep();
+        }
+
+        private void OnOnboardingSkipClicked(TeachingTip sender, object args)
+        {
+            CompleteOnboarding();
+        }
+
+        private void CompleteOnboarding()
+        {
+            OnboardingTip.IsOpen = false;
+            _onboardingService.MarkProductOnboardingCompleted();
         }
 
         private void ProductPage_SizeChanged(object sender, SizeChangedEventArgs e)
