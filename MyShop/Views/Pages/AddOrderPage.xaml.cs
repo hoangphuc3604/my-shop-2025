@@ -2,32 +2,31 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Contracts;
-using MyShop.Data.Models;
 using MyShop.Services;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+using MyShop.ViewModels;
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using CommunityToolkit.WinUI.UI.Controls;
 
 namespace MyShop.Views.Pages
 {
     public sealed partial class AddOrderPage : Page
     {
-        private readonly IOrderService _orderService;
-        private readonly IProductService _productService;
-        private List<ProductSelection> _productSelections = new();
-        private bool _isLoading = false;
+        private AddOrderViewModel _viewModel;
         private ContentDialog? _currentDialog;
+        private bool _isInitialized;
 
         public AddOrderPage()
         {
             this.InitializeComponent();
-            _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
-            _productService = (App.Services.GetService(typeof(IProductService)) as IProductService)!;
+            
+            var orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
+            var productService = (App.Services.GetService(typeof(IProductService)) as IProductService)!;
+            var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
+            _viewModel = new AddOrderViewModel(orderService, productService, sessionService);
+            
+            DataContext = _viewModel;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -37,8 +36,16 @@ namespace MyShop.Views.Pages
 
             if (e.NavigationMode != NavigationMode.Back)
             {
+                _isInitialized = true;
                 await LoadProductsAsync();
             }
+        }
+
+        protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            SizeChanged -= AddOrderPage_SizeChanged;
+            _isInitialized = false;
         }
 
         private void AddOrderPage_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -56,12 +63,10 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[ADD_ORDER_PAGE] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
 
-                // Adjust DataGrid column widths for responsive display
                 if (ProductsDataGrid?.Columns.Count > 0)
                 {
                     if (isCompact)
                     {
-                        // Mobile: Show only essential columns, reduce width
                         foreach (var column in ProductsDataGrid.Columns)
                         {
                             if (column.Header?.ToString() == "Description" || column.Header?.ToString() == "Category")
@@ -76,7 +81,6 @@ namespace MyShop.Views.Pages
                     }
                     else
                     {
-                        // Desktop: Show all columns with appropriate widths
                         foreach (var column in ProductsDataGrid.Columns)
                         {
                             column.Visibility = Visibility.Visible;
@@ -85,33 +89,12 @@ namespace MyShop.Views.Pages
                     }
                 }
 
-                // Adjust search box and summary panel layout
-                if (TopPanel != null)
-                {
-                    TopPanel.Padding = new Thickness(padding);
-                }
+                if (TopPanel != null) TopPanel.Padding = new Thickness(padding);
+                if (SummaryPanel != null) SummaryPanel.Padding = new Thickness(padding);
 
-                if (SummaryPanel != null)
+                if (ButtonPanel != null)
                 {
-                    SummaryPanel.Padding = new Thickness(padding);
-                }
-
-                // Adjust button sizing for compact layouts
-                if (isCompact)
-                {
-                    // Make buttons stack or adjust sizing for mobile
-                    if (ButtonPanel != null)
-                    {
-                        ButtonPanel.Orientation = Orientation.Vertical;
-                    }
-                }
-                else
-                {
-                    // Horizontal button layout for desktop
-                    if (ButtonPanel != null)
-                    {
-                        ButtonPanel.Orientation = Orientation.Horizontal;
-                    }
+                    ButtonPanel.Orientation = isCompact ? Orientation.Vertical : Orientation.Horizontal;
                 }
 
                 this.Padding = new Thickness(padding);
@@ -124,61 +107,24 @@ namespace MyShop.Views.Pages
 
         private async Task LoadProductsAsync()
         {
-            if (_isLoading)
-                return;
-
-            _isLoading = true;
-
             try
             {
-                var token = GetAuthToken();
-
-                var products = await _productService.GetProductsAsync(
-                    page: 1,
-                    pageSize: 1000,
-                    categoryId: null,
-                    minPrice: null,
-                    maxPrice: null,
-                    search: null,
-                    sortBy: null,
-                    token: token);
-
-                _productSelections = products
-                    .OrderBy(p => p.ProductId)
-                    .Select(p => new ProductSelection
-                    {
-                        Product = p,
-                        Quantity = 0,
-                        OnQuantityChangedCallback = UpdateSummary
-                    })
-                    .ToList();
-
-                ProductsDataGrid.ItemsSource = _productSelections;
-                UpdateSummary();
+                await _viewModel.LoadProductsAsync();
+                ProductsDataGrid.ItemsSource = _viewModel.FilteredProducts;
             }
             catch (Exception ex)
             {
                 await ShowErrorAsync($"Failed to load products: {ex.Message}");
             }
-            finally
-            {
-                _isLoading = false;
-            }
         }
 
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
         {
-            var searchText = SearchBox.Text?.ToLower() ?? string.Empty;
+            if (!_isInitialized || _viewModel == null)
+                return;
 
-            var filteredProducts = string.IsNullOrEmpty(searchText)
-                ? _productSelections
-                : _productSelections
-                    .Where(p => p.Product.Name.ToLower().Contains(searchText) ||
-                               p.Product.Sku.ToLower().Contains(searchText))
-                    .OrderBy(p => p.Product.ProductId)
-                    .ToList();
-
-            ProductsDataGrid.ItemsSource = filteredProducts;
+            _viewModel.SearchText = SearchBox.Text ?? string.Empty;
+            ProductsDataGrid.ItemsSource = _viewModel.FilteredProducts;
         }
 
         private void OnQuantityValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
@@ -193,88 +139,29 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private void UpdateSummary()
-        {
-            var selectedCount = _productSelections.Count(s => s.Quantity > 0);
-            var totalPrice = _productSelections.Sum(s => s.TotalPrice);
-
-            SelectedCountText.Text = $"Products selected: {selectedCount}";
-            TotalPriceText.Text = $"Total Price: {totalPrice.ToString("#,0 ₫")}";
-        }
-
         private async void OnCreateOrderClicked(object sender, RoutedEventArgs e)
         {
-            if (_isLoading)
-                return;
-
-            var selectedProducts = _productSelections
-                .Where(s => s.Quantity > 0)
-                .ToList();
-
-            if (selectedProducts.Count == 0)
-            {
-                await ShowErrorAsync("Please select at least one product before creating an order.");
-                return;
-            }
-
-            await CreateOrderAsync(selectedProducts);
-        }
-
-        private async Task CreateOrderAsync(List<ProductSelection> selectedProducts)
-        {
-            _isLoading = true;
-
             try
             {
-                var token = GetAuthToken();
-
-                var orderItems = selectedProducts
-                    .Select(s => new OrderItemInput
-                    {
-                        ProductId = s.Product.ProductId,
-                        Quantity = s.Quantity
-                    })
-                    .ToList();
-
-                var createOrderInput = new CreateOrderInput
-                {
-                    OrderItems = orderItems
-                };
-
-                Debug.WriteLine("[ADD_ORDER_PAGE] Creating order...");
-
-                var newOrder = await _orderService.CreateOrderAsync(createOrderInput, token);
-
-                Debug.WriteLine($"[ADD_ORDER_PAGE] Order creation result: {(newOrder != null ? "Success" : "Null")}");
-
+                var newOrder = await _viewModel.CreateOrderAsync();
+                
                 if (newOrder != null)
                 {
-                    Debug.WriteLine($"[ADD_ORDER_PAGE] ✓ Order #{newOrder.OrderId} created successfully");
-                    
-                    await ShowSuccessAsync($"Order #{newOrder.OrderId} created successfully with {selectedProducts.Count} product(s)!");
-
-                    _isLoading = false;
+                    await ShowSuccessAsync($"Order #{newOrder.OrderId} created successfully with {_viewModel.SelectedCount} product(s)!");
                     
                     if (Frame.CanGoBack)
                     {
                         Frame.GoBack();
                     }
                 }
-                else
-                {
-                    Debug.WriteLine("[ADD_ORDER_PAGE] ✗ newOrder is null - response parsing failed");
-                    await ShowErrorAsync("Failed to create order. The response from the server could not be parsed. Please try again.");
-                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                await ShowErrorAsync(ex.Message);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ADD_ORDER_PAGE] ✗ Exception: {ex.GetType().Name} - {ex.Message}");
-                Debug.WriteLine($"[ADD_ORDER_PAGE] ✗ Stack: {ex.StackTrace}");
                 await ShowErrorAsync($"Failed to create order: {ex.Message}");
-            }
-            finally
-            {
-                _isLoading = false;
             }
         }
 
@@ -288,11 +175,7 @@ namespace MyShop.Views.Pages
 
         private async Task ShowErrorAsync(string message)
         {
-            if (_currentDialog != null)
-            {
-                _currentDialog.Hide();
-                _currentDialog = null;
-            }
+            await CloseCurrentDialogAsync();
 
             _currentDialog = new ContentDialog
             {
@@ -308,11 +191,7 @@ namespace MyShop.Views.Pages
 
         private async Task ShowSuccessAsync(string message)
         {
-            if (_currentDialog != null)
-            {
-                _currentDialog.Hide();
-                _currentDialog = null;
-            }
+            await CloseCurrentDialogAsync();
 
             _currentDialog = new ContentDialog
             {
@@ -326,59 +205,13 @@ namespace MyShop.Views.Pages
             _currentDialog = null;
         }
 
-        private string? GetAuthToken()
+        private async Task CloseCurrentDialogAsync()
         {
-            var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
-            var token = sessionService?.GetAuthToken();
-            
-            if (string.IsNullOrEmpty(token))
+            if (_currentDialog != null)
             {
-                Debug.WriteLine("[ADD_ORDER_PAGE] ✗ No authentication token available");
+                _currentDialog.Hide();
+                _currentDialog = null;
             }
-            else
-            {
-                Debug.WriteLine("[ADD_ORDER_PAGE] ✓ Authentication token retrieved");
-            }
-            
-            return token;
-        }
-    }
-
-    public class ProductSelection : INotifyPropertyChanged
-    {
-        private int _quantity;
-        private Action? _onQuantityChangedCallback;
-
-        public Product Product { get; set; } = new();
-
-        public Action? OnQuantityChangedCallback
-        {
-            get => _onQuantityChangedCallback;
-            set => _onQuantityChangedCallback = value;
-        }
-
-        public int Quantity
-        {
-            get => _quantity;
-            set
-            {
-                if (_quantity != value)
-                {
-                    _quantity = value;
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(TotalPrice));
-                    OnQuantityChangedCallback?.Invoke();
-                }
-            }
-        }
-
-        public int TotalPrice => Product.ImportPrice * Quantity;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

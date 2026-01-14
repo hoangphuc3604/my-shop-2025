@@ -4,59 +4,27 @@ using Microsoft.UI.Xaml.Navigation;
 using MyShop.Contracts;
 using MyShop.Data.Models;
 using MyShop.Services;
+using MyShop.ViewModels;
 using System;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace MyShop.Views.Pages
 {
-    public sealed partial class OrderDetailsPage : Page, INotifyPropertyChanged
+    public sealed partial class OrderDetailsPage : Page
     {
-        private readonly IOrderService _orderService;
-        private readonly ISessionService _sessionService;
-        private readonly OrderExportService _exportService;
-        private Order? _currentOrder;
-        private ObservableCollection<OrderItem> _orderItems;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        public Order? CurrentOrder
-        {
-            get => _currentOrder;
-            set
-            {
-                if (_currentOrder != value)
-                {
-                    _currentOrder = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public ObservableCollection<OrderItem> OrderItems
-        {
-            get => _orderItems;
-            set
-            {
-                if (_orderItems != value)
-                {
-                    _orderItems = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
+        private OrderDetailsViewModel _viewModel;
 
         public OrderDetailsPage()
         {
             this.InitializeComponent();
-            _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
-            _sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
-            _exportService = new OrderExportService();
-            _orderItems = new ObservableCollection<OrderItem>();
-            this.DataContext = this;
+            
+            var orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
+            var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
+            var exportService = new OrderExportService();
+            _viewModel = new OrderDetailsViewModel(orderService, sessionService, exportService);
+            
+            DataContext = _viewModel;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -66,8 +34,14 @@ namespace MyShop.Views.Pages
 
             if (e.Parameter is Order order)
             {
-                await LoadOrderDetailsAsync(order);
+                await LoadOrderAsync(order);
             }
+        }
+
+        protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            SizeChanged -= OrderDetailsPage_SizeChanged;
         }
 
         private void OrderDetailsPage_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -85,7 +59,6 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[ORDER_DETAILS] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
 
-                // Update padding
                 this.Padding = new Thickness(padding);
             }
             catch (Exception ex)
@@ -94,60 +67,16 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private async Task LoadOrderDetailsAsync(Order order)
+        private async Task LoadOrderAsync(Order order)
         {
             try
             {
-                Debug.WriteLine("");
-                Debug.WriteLine("════════════════════════════════════════");
-                Debug.WriteLine($"[ORDER_DETAILS] LOADING ORDER #{order.OrderId}");
-                Debug.WriteLine("════════════════════════════════════════");
-
-                var token = GetAuthToken();
-                var fullOrder = await _orderService.GetOrderByIdAsync(order.OrderId, token);
-
-                if (fullOrder == null)
-                {
-                    await ShowErrorAsync("Order not found.");
-                    Debug.WriteLine("[ORDER_DETAILS] ✗ Order not found");
-                    return;
-                }
-
-                CurrentOrder = fullOrder;
-                OrderItems.Clear();
-                
-                if (fullOrder.OrderItems != null)
-                {
-                    foreach (var item in fullOrder.OrderItems)
-                    {
-                        OrderItems.Add(item);
-                    }
-                    Debug.WriteLine($"[ORDER_DETAILS] ✓ Loaded {OrderItems.Count} order items");
-                }
-
-                Debug.WriteLine("════════════════════════════════════════");
+                await _viewModel.LoadOrderDetailsAsync(order);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ORDER_DETAILS] ✗ Error loading order: {ex.Message}");
                 await ShowErrorAsync($"Failed to load order details: {ex.Message}");
             }
-        }
-
-        private string? GetAuthToken()
-        {
-            var token = _sessionService?.GetAuthToken();
-            
-            if (string.IsNullOrEmpty(token))
-            {
-                Debug.WriteLine("[ORDER_DETAILS] ✗ No authentication token available");
-            }
-            else
-            {
-                Debug.WriteLine("[ORDER_DETAILS] ✓ Authentication token retrieved");
-            }
-            
-            return token;
         }
 
         private void OnBackClicked(object sender, RoutedEventArgs e)
@@ -160,41 +89,25 @@ namespace MyShop.Views.Pages
 
         private async void OnExportToPdfClicked(object sender, RoutedEventArgs e)
         {
-            if (CurrentOrder == null)
-            {
-                await ShowErrorAsync("No order to export.");
-                return;
-            }
-
             try
             {
-                Debug.WriteLine($"[ORDER_DETAILS] Exporting order #{CurrentOrder.OrderId} to PDF...");
-                await _exportService.ExportOrderAsync(CurrentOrder, this.XamlRoot, "pdf");
-                Debug.WriteLine($"[ORDER_DETAILS] ✓ Export completed");
+                await _viewModel.ExportToFormatAsync("pdf", this.XamlRoot);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ORDER_DETAILS] ✗ Export failed: {ex.Message}");
+                await ShowErrorAsync($"Failed to export to PDF: {ex.Message}");
             }
         }
 
         private async void OnExportToXpsClicked(object sender, RoutedEventArgs e)
         {
-            if (CurrentOrder == null)
-            {
-                await ShowErrorAsync("No order to export.");
-                return;
-            }
-
             try
             {
-                Debug.WriteLine($"[ORDER_DETAILS] Exporting order #{CurrentOrder.OrderId} to XPS...");
-                await _exportService.ExportOrderAsync(CurrentOrder, this.XamlRoot, "xps");
-                Debug.WriteLine($"[ORDER_DETAILS] ✓ Export completed");
+                await _viewModel.ExportToFormatAsync("xps", this.XamlRoot);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ORDER_DETAILS] ✗ Export failed: {ex.Message}");
+                await ShowErrorAsync($"Failed to export to XPS: {ex.Message}");
             }
         }
 
@@ -209,11 +122,6 @@ namespace MyShop.Views.Pages
             };
 
             await dialog.ShowAsync();
-        }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

@@ -4,51 +4,27 @@ using Microsoft.UI.Xaml.Navigation;
 using MyShop.Contracts;
 using MyShop.Data.Models;
 using MyShop.Services;
+using MyShop.ViewModels;
 using System;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace MyShop.Views.Pages
 {
-    public sealed partial class EditOrderPage : Page, INotifyPropertyChanged
+    public sealed partial class EditOrderPage : Page
     {
-        private readonly IOrderService _orderService;
-        private Order? _currentOrder;
-        private string _selectedStatus = "Created";
-        private ObservableCollection<ReadOnlyOrderItem> _orderItems;
-        private bool _isLoading = false;
+        private EditOrderViewModel _viewModel;
         private ContentDialog? _currentDialog;
-
-        public Order? CurrentOrder
-        {
-            get => _currentOrder;
-            set => SetProperty(ref _currentOrder, value);
-        }
-
-        public string SelectedStatus
-        {
-            get => _selectedStatus;
-            set => SetProperty(ref _selectedStatus, value);
-        }
-
-        public ObservableCollection<ReadOnlyOrderItem> OrderItems
-        {
-            get => _orderItems;
-            set => SetProperty(ref _orderItems, value);
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         public EditOrderPage()
         {
             this.InitializeComponent();
-            _orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
-            _orderItems = new ObservableCollection<ReadOnlyOrderItem>();
-            this.DataContext = this;
+            
+            var orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
+            var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
+            _viewModel = new EditOrderViewModel(orderService, sessionService);
+            
+            DataContext = _viewModel;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -56,14 +32,16 @@ namespace MyShop.Views.Pages
             base.OnNavigatedTo(e);
             SizeChanged += EditOrderPage_SizeChanged;
 
-            if (e.NavigationMode != NavigationMode.Back)
+            if (e.NavigationMode != NavigationMode.Back && e.Parameter is Order order)
             {
-                if (e.Parameter is Order order)
-                {
-                    _currentOrder = order;
-                    await LoadOrderForEditAsync(order);
-                }
+                await LoadOrderAsync(order);
             }
+        }
+
+        protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            SizeChanged -= EditOrderPage_SizeChanged;
         }
 
         private void EditOrderPage_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -81,7 +59,6 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[EDIT_ORDER_PAGE] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
 
-                // Update padding
                 this.Padding = new Thickness(padding);
             }
             catch (Exception ex)
@@ -90,77 +67,28 @@ namespace MyShop.Views.Pages
             }
         }
 
-        private async Task LoadOrderForEditAsync(Order order)
+        private async Task LoadOrderAsync(Order order)
         {
-            if (_isLoading)
-                return;
-
-            _isLoading = true;
-
             try
             {
-                var token = GetAuthToken();
-                var fullOrder = await _orderService.GetOrderByIdAsync(order.OrderId, token);
-
-                if (fullOrder == null)
-                {
-                    await ShowErrorAsync("Order not found.");
-                    return;
-                }
-
-                CurrentOrder = fullOrder;
-                SelectedStatus = fullOrder.Status;
-                OrderItems.Clear();
-
-                foreach (var item in fullOrder.OrderItems)
-                {
-                    OrderItems.Add(new ReadOnlyOrderItem(item));
-                }
-
-                Debug.WriteLine($"[EDIT_ORDER_PAGE] ✓ Order #{order.OrderId} loaded for editing");
+                await _viewModel.LoadOrderForEditAsync(order);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[EDIT_ORDER_PAGE] ✗ Error loading order: {ex.Message}");
                 await ShowErrorAsync($"Failed to load order: {ex.Message}");
-            }
-            finally
-            {
-                _isLoading = false;
             }
         }
 
         private async void OnSaveClicked(object sender, RoutedEventArgs e)
         {
-            if (_currentOrder == null || _isLoading)
-                return;
-
-            await SaveOrderStatusAsync();
-        }
-
-        private async Task SaveOrderStatusAsync()
-        {
-            _isLoading = true;
-
             try
             {
-                var token = GetAuthToken();
-
-                Debug.WriteLine("[EDIT_ORDER_PAGE] Updating order status to: " + SelectedStatus);
-
-                var updateInput = new UpdateOrderInput
+                var success = await _viewModel.SaveOrderStatusAsync();
+                
+                if (success)
                 {
-                    Status = SelectedStatus,
-                    OrderItems = null
-                };
-
-                var updatedOrder = await _orderService.UpdateOrderAsync(_currentOrder!.OrderId, updateInput, token);
-
-                if (updatedOrder != null)
-                {
-                    Debug.WriteLine($"[EDIT_ORDER_PAGE] ✓ Order #{_currentOrder.OrderId} status updated successfully");
-                    await ShowSuccessAsync($"Order #{_currentOrder.OrderId} status changed to '{SelectedStatus}' successfully!");
-
+                    await ShowSuccessAsync($"Order #{_viewModel.CurrentOrder!.OrderId} status changed to '{_viewModel.SelectedStatus}' successfully!");
+                    
                     if (Frame.CanGoBack)
                     {
                         Frame.GoBack();
@@ -168,18 +96,12 @@ namespace MyShop.Views.Pages
                 }
                 else
                 {
-                    Debug.WriteLine("[EDIT_ORDER_PAGE] ✗ Failed to update order");
                     await ShowErrorAsync("Failed to update order. Please try again.");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[EDIT_ORDER_PAGE] ✗ Exception: {ex.Message}");
                 await ShowErrorAsync($"Failed to update order: {ex.Message}");
-            }
-            finally
-            {
-                _isLoading = false;
             }
         }
 
@@ -193,11 +115,7 @@ namespace MyShop.Views.Pages
 
         private async Task ShowErrorAsync(string message)
         {
-            if (_currentDialog != null)
-            {
-                _currentDialog.Hide();
-                _currentDialog = null;
-            }
+            await CloseCurrentDialogAsync();
 
             _currentDialog = new ContentDialog
             {
@@ -213,11 +131,7 @@ namespace MyShop.Views.Pages
 
         private async Task ShowSuccessAsync(string message)
         {
-            if (_currentDialog != null)
-            {
-                _currentDialog.Hide();
-                _currentDialog = null;
-            }
+            await CloseCurrentDialogAsync();
 
             _currentDialog = new ContentDialog
             {
@@ -231,47 +145,13 @@ namespace MyShop.Views.Pages
             _currentDialog = null;
         }
 
-        protected void SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = "")
+        private async Task CloseCurrentDialogAsync()
         {
-            if (!Equals(field, value))
+            if (_currentDialog != null)
             {
-                field = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                _currentDialog.Hide();
+                _currentDialog = null;
             }
-        }
-
-        private string? GetAuthToken()
-        {
-            var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
-            var token = sessionService?.GetAuthToken();
-            
-            if (string.IsNullOrEmpty(token))
-            {
-                Debug.WriteLine("[EDIT_ORDER_PAGE] ✗ No authentication token available");
-            }
-            else
-            {
-                Debug.WriteLine("[EDIT_ORDER_PAGE] ✓ Authentication token retrieved");
-            }
-            
-            return token;
-        }
-    }
-
-    /// <summary>
-    /// Read-only order item - no quantity editing allowed
-    /// </summary>
-    public class ReadOnlyOrderItem
-    {
-        public OrderItem OrderItem { get; }
-
-        public int Quantity => OrderItem.Quantity;
-
-        public int TotalPrice => (int)(OrderItem.UnitSalePrice * OrderItem.Quantity);
-
-        public ReadOnlyOrderItem(OrderItem orderItem)
-        {
-            OrderItem = orderItem;
         }
     }
 }

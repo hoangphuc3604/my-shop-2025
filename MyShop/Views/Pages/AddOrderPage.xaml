@@ -10,6 +10,10 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
+    <Page.Resources>
+        <converters:PriceConverter x:Key="PriceConverter"/>
+    </Page.Resources>
+
     <Grid RowSpacing="0" ColumnSpacing="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -54,6 +58,7 @@
             <TextBox
                 x:Name="SearchBox"
                 PlaceholderText="Search products by name or SKU..."
+                Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 TextChanged="OnSearchTextChanged"
                 Height="40"/>
         </Border>
@@ -135,15 +140,17 @@
                 <!-- Summary -->
                 <StackPanel Spacing="8">
                     <TextBlock
-                        x:Name="SelectedCountText"
-                        Text="Products selected: 0"
-                        FontSize="13"/>
+                        FontSize="13">
+                        <Run Text="Products selected: "/>
+                        <Run Text="{Binding SelectedCount}" FontWeight="SemiBold"/>
+                    </TextBlock>
                     <TextBlock
-                        x:Name="TotalPriceText"
-                        Text="Total Price: 0 ₫"
                         FontSize="14"
                         FontWeight="SemiBold"
-                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}">
+                        <Run Text="Total Price: "/>
+                        <Run Text="{Binding TotalPrice, Converter={StaticResource PriceConverter}}"/>
+                    </TextBlock>
                 </StackPanel>
 
                 <!-- Action Buttons -->
@@ -155,7 +162,8 @@
                     x:Name="ButtonPanel">
                     <Button
                         Content="Create Order"
-                        Click="OnCreateOrderClicked"/>
+                        Click="OnCreateOrderClicked"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBoolConverter}}"/>
                 </StackPanel>
             </Grid>
         </Border>

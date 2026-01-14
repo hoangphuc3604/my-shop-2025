@@ -62,9 +62,25 @@ public partial class App : Application
             // ViewModels and Views
             services.AddTransient<LoginViewModel>();
             services.AddTransient<ProductViewModel>();
+            services.AddTransient<OrderViewModel>();
             services.AddTransient<LoginWindow>();
             services.AddTransient<MainWindow>();
             services.AddTransient<MainViewModel>();
+
+            // Order ViewModels
+            services.AddTransient<AddOrderViewModel>();
+            services.AddTransient<EditOrderViewModel>();
+            services.AddTransient<OrderDetailsViewModel>();
+
+            // Trial ViewModel
+            services.AddTransient<TrialExpiredViewModel>();
+
+            // Dashboard and Report ViewModels
+            services.AddTransient<DashboardViewModel>();
+            services.AddTransient<ReportViewModel>();
+
+            // Export Service
+            services.AddSingleton<OrderExportService>();
 
             _serviceProvider = services.BuildServiceProvider();
         }

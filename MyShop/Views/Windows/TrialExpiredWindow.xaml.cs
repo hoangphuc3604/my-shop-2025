@@ -1,46 +1,34 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using MyShop.Contracts;
 using MyShop.Services;
+using MyShop.ViewModels;
 
 namespace MyShop.Views.Windows
 {
     public sealed partial class TrialExpiredWindow : Window
     {
-        private readonly ITrialLicenseService _trialService;
-        private readonly INavigationService _navigationService;
+        private readonly TrialExpiredViewModel _viewModel;
 
-        public TrialExpiredWindow(ITrialLicenseService trialService, INavigationService navigationService)
+        public TrialExpiredWindow(ITrialLicenseService trialService)
         {
             this.InitializeComponent();
-            _trialService = trialService;
-            _navigationService = navigationService;
+            _viewModel = new TrialExpiredViewModel(trialService);
+            _viewModel.ActivationSucceeded += OnActivationSucceeded;
+            _viewModel.ActivationFailed += OnActivationFailed;
+
+            // Set DataContext on the root element of the XAML, not on Content (UIElement)
+            if (this.Content is FrameworkElement rootElement)
+            {
+                rootElement.DataContext = _viewModel;
+            }
         }
 
         private async void OnActivateClicked(object sender, RoutedEventArgs e)
         {
-            var code = ActivationCodeBox.Text;
-
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                await ShowMessage("Please enter an activation code");
-                return;
-            }
-
-            if (_trialService.ActivateWithCode(code))
-            {
-                await ShowMessage("✓ License activated successfully! Please restart the application.");
-                this.Close();
-            }
-            else
-            {
-                await ShowMessage("✗ Invalid activation code. Please check and try again.");
-                ActivationCodeBox.Text = string.Empty;
-                ActivationCodeBox.Focus(FocusState.Programmatic);
-            }
+            _viewModel.ActivateWithCode();
         }
 
         private void OnExitClicked(object sender, RoutedEventArgs e)
@@ -49,7 +37,18 @@ namespace MyShop.Views.Windows
             Environment.Exit(0);
         }
 
-        private async Task ShowMessage(string message)
+        private async void OnActivationSucceeded(object? sender, EventArgs e)
+        {
+            await ShowMessage("✓ License activated successfully! Please restart the application.");
+            this.Close();
+        }
+
+        private async void OnActivationFailed(object? sender, string message)
+        {
+            await ShowMessage(message);
+        }
+
+        private async System.Threading.Tasks.Task ShowMessage(string message)
         {
             var dialog = new ContentDialog
             {

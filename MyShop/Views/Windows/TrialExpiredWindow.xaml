@@ -43,8 +43,10 @@
             <TextBlock Text="Activation Code:" FontWeight="SemiBold"/>
             <TextBox
                 x:Name="ActivationCodeBox"
+                Text="{Binding ActivationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 PlaceholderText="Enter your activation code (e.g., MYSHOP-2025-TRIAL)"
-                Height="44"/>
+                Height="44"
+                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"/>
         </StackPanel>
 
         <!-- Info -->
@@ -59,17 +61,27 @@
                 <TextBlock Text="✓ Contact support@myshop.com" TextWrapping="Wrap"/>
                 <TextBlock Text="✓ Email: support@myshop.com" TextWrapping="Wrap" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
             </StackPanel>
+
+            <!-- Processing Indicator -->
+            <ProgressRing 
+                IsActive="{Binding IsProcessing}"
+                Width="30"
+                Height="30"
+                HorizontalAlignment="Center"
+                Margin="0,10,0,0"/>
         </StackPanel>
 
         <!-- Buttons -->
         <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
             <Button
                 Content="Exit"
-                Click="OnExitClicked"/>
+                Click="OnExitClicked"
+                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"/>
             <Button
                 Content="Activate"
                 Click="OnActivateClicked"
-                Style="{StaticResource AccentButtonStyle}"/>
+                Style="{StaticResource AccentButtonStyle}"
+                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"/>
         </StackPanel>
     </Grid>
 </Window>
