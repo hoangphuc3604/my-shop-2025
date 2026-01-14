@@ -32,11 +32,20 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" Text="From:" VerticalAlignment="Center"/>
-                <CalendarDatePicker Grid.Column="1" x:Name="FromDatePicker" PlaceholderText="Start date" DateChanged="OnDateRangeChanged"/>
+                <CalendarDatePicker Grid.Column="1" 
+                                   x:Name="FromDatePicker" 
+                                   PlaceholderText="Start date" 
+                                   DateChanged="OnDateRangeChanged"/>
                 <TextBlock Grid.Column="2" Text="To:" VerticalAlignment="Center"/>
-                <CalendarDatePicker Grid.Column="3" x:Name="ToDatePicker" PlaceholderText="End date" DateChanged="OnDateRangeChanged"/>
+                <CalendarDatePicker Grid.Column="3" 
+                                   x:Name="ToDatePicker" 
+                                   PlaceholderText="End date" 
+                                   DateChanged="OnDateRangeChanged"/>
                 <TextBlock Grid.Column="4" Text="Period:" VerticalAlignment="Center" Margin="20,0,10,0"/>
-                <ComboBox Grid.Column="5" x:Name="TimePeriodCombo" SelectionChanged="OnTimePeriodChanged" Width="120">
+                <ComboBox Grid.Column="5" 
+                         x:Name="TimePeriodCombo" 
+                         SelectionChanged="OnTimePeriodChanged" 
+                         Width="120">
                     <ComboBoxItem Content="Day" Tag="Day" IsSelected="True"/>
                     <ComboBoxItem Content="Week" Tag="Week"/>
                     <ComboBoxItem Content="Month" Tag="Month"/>
@@ -63,21 +72,30 @@
                         <Border Grid.Column="0" Padding="20" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderThickness="1" BorderBrush="{ThemeResource ControlElevationBorderBrush}">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Total Revenue" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}"/>
-                                <TextBlock x:Name="TotalRevenueText" Text="0 ₫" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{Binding TotalRevenue}" 
+                                          FontSize="24" 
+                                          FontWeight="Bold" 
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="1" Padding="20" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderThickness="1" BorderBrush="{ThemeResource ControlElevationBorderBrush}">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Total Orders" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}"/>
-                                <TextBlock x:Name="TotalOrdersText" Text="0" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{Binding TotalOrders}" 
+                                          FontSize="24" 
+                                          FontWeight="Bold" 
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="2" Padding="20" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderThickness="1" BorderBrush="{ThemeResource ControlElevationBorderBrush}">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Average Order Value" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}"/>
-                                <TextBlock x:Name="AverageOrderValueText" Text="0 ₫" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{Binding AverageOrderValue}" 
+                                          FontSize="24" 
+                                          FontWeight="Bold" 
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -106,7 +124,10 @@
                         
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                             <TextBlock Text="Filter by Product:" VerticalAlignment="Center" FontSize="12"/>
-                            <ComboBox x:Name="ProductCombo" SelectionChanged="OnProductSelected" PlaceholderText="All Products" Width="250">
+                            <ComboBox x:Name="ProductCombo" 
+                                     SelectionChanged="OnProductSelected" 
+                                     PlaceholderText="All Products" 
+                                     Width="250">
                                 <ComboBoxItem Content="All Products" Tag="-1" IsSelected="True"/>
                             </ComboBox>
                         </StackPanel>

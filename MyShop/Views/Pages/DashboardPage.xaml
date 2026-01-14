@@ -24,7 +24,11 @@
             <StackPanel Padding="20" Spacing="20">
                 
                 <!-- Loading Indicator -->
-                <ProgressRing x:Name="LoadingProgressRing" IsActive="True" Width="40" Height="40" HorizontalAlignment="Center"/>
+                <ProgressRing x:Name="LoadingProgressRing" 
+                             IsActive="{Binding IsLoading}" 
+                             Width="40" 
+                             Height="40" 
+                             HorizontalAlignment="Center"/>
 
                 <!-- Summary Cards -->
                 <StackPanel Spacing="15" x:Name="SummaryPanel">
@@ -40,21 +44,30 @@
                         <Border Grid.Column="0" Padding="20" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderThickness="1" BorderBrush="{ThemeResource ControlElevationBorderBrush}">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Total Products" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}"/>
-                                <TextBlock x:Name="TotalProductsText" Text="0" FontSize="28" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{Binding TotalProducts}" 
+                                          FontSize="28" 
+                                          FontWeight="Bold" 
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="1" Padding="20" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderThickness="1" BorderBrush="{ThemeResource ControlElevationBorderBrush}">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Today's Orders" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}"/>
-                                <TextBlock x:Name="TodayOrdersText" Text="0" FontSize="28" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{Binding TodayOrders}" 
+                                          FontSize="28" 
+                                          FontWeight="Bold" 
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="2" Padding="20" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderThickness="1" BorderBrush="{ThemeResource ControlElevationBorderBrush}">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Today's Revenue" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}"/>
-                                <TextBlock x:Name="TodayRevenueText" Text="0 ₫" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{Binding TodayRevenue}" 
+                                          FontSize="24" 
+                                          FontWeight="Bold" 
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Border>
                     </Grid>

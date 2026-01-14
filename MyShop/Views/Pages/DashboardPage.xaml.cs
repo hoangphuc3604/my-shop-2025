@@ -2,8 +2,8 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Contracts;
-using MyShop.Data.Models;
 using MyShop.Services;
+using MyShop.ViewModels;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -12,18 +12,19 @@ namespace MyShop.Views.Pages
 {
     public sealed partial class DashboardPage : Page
     {
-        private readonly IDashboardService _dashboardService;
-        private readonly ISessionService _sessionService;
+        private DashboardViewModel _viewModel;
         private readonly DashboardUIService _uiService;
-        private bool _isLoading = false;
-        private DashboardStatsData _currentStats;
 
         public DashboardPage()
         {
             this.InitializeComponent();
-            _dashboardService = (App.Services.GetService(typeof(IDashboardService)) as IDashboardService)!;
-            _sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
+            
+            var dashboardService = (App.Services.GetService(typeof(IDashboardService)) as IDashboardService)!;
+            var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
+            _viewModel = new DashboardViewModel(dashboardService, sessionService);
             _uiService = new DashboardUIService();
+            
+            DataContext = _viewModel;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -33,14 +34,20 @@ namespace MyShop.Views.Pages
             await LoadDashboardAsync();
         }
 
+        protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            SizeChanged -= DashboardPage_SizeChanged;
+        }
+
         private void DashboardPage_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
             
             // Redraw chart when size changes
-            if (_currentStats != null)
+            if (_viewModel.Stats != null)
             {
-                _uiService.DrawMonthlyRevenueChart(MonthlyRevenueCanvas, NoDataMessageRevenue, _currentStats);
+                _uiService.DrawMonthlyRevenueChart(MonthlyRevenueCanvas, NoDataMessageRevenue, _viewModel.Stats);
             }
         }
 
@@ -54,7 +61,6 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[DASHBOARD] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
 
-                // Update padding for better spacing
                 this.Padding = new Thickness(padding);
             }
             catch (Exception ex)
@@ -65,38 +71,32 @@ namespace MyShop.Views.Pages
 
         private async Task LoadDashboardAsync()
         {
-            if (_isLoading)
-                return;
-
-            _isLoading = true;
-            LoadingProgressRing.IsActive = true;
-
             try
             {
-                var token = _sessionService?.GetAuthToken();
-                _currentStats = await _dashboardService.LoadDashboardStatsAsync(token);
-
-                _uiService.UpdateSummaryCards(TotalProductsText, TodayRevenueText, TodayOrdersText, _currentStats);
-                _uiService.UpdateTopSellingProducts(TopSellingProductsList, _currentStats);
-                _uiService.UpdateLowStockProducts(LowStockProductsList, _currentStats);
-                _uiService.UpdateRecentOrders(RecentOrdersList, _currentStats);
-                _uiService.DrawMonthlyRevenueChart(MonthlyRevenueCanvas, NoDataMessageRevenue, _currentStats);
+                await _viewModel.LoadDashboardAsync();
+                
+                // Update UI elements that can't be bound directly
+                _uiService.UpdateTopSellingProducts(TopSellingProductsList, _viewModel.Stats);
+                _uiService.UpdateLowStockProducts(LowStockProductsList, _viewModel.Stats);
+                _uiService.UpdateRecentOrders(RecentOrdersList, _viewModel.Stats);
+                _uiService.DrawMonthlyRevenueChart(MonthlyRevenueCanvas, NoDataMessageRevenue, _viewModel.Stats);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[DASHBOARD] ✗ Error loading dashboard: {ex.Message}");
                 await ShowErrorAsync($"Failed to load dashboard: {ex.Message}");
             }
-            finally
-            {
-                _isLoading = false;
-                LoadingProgressRing.IsActive = false;
-            }
         }
 
         private async Task ShowErrorAsync(string message)
         {
-            var dialog = new ContentDialog { Title = "Error", Content = message, CloseButtonText = "Close", XamlRoot = this.XamlRoot };
+            var dialog = new ContentDialog 
+            { 
+                Title = "Error", 
+                Content = message, 
+                CloseButtonText = "Close", 
+                XamlRoot = this.XamlRoot 
+            };
             await dialog.ShowAsync();
         }
     }

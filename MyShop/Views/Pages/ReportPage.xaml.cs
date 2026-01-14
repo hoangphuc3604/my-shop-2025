@@ -6,10 +6,10 @@ using Microsoft.UI.Xaml.Shapes;
 using MyShop.Contracts;
 using MyShop.Data.Models;
 using MyShop.Services;
+using MyShop.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.UI;
@@ -19,35 +19,46 @@ namespace MyShop.Views.Pages
 {
     public sealed partial class ReportPage : Page
     {
-        private readonly IReportService _reportService;
-        private readonly IProductService _productService;
-        private readonly ISessionService _sessionService;
-        private bool _isLoading = false;
-        private RevenueReport _currentReport;
-        private List<Product> _allProducts;
-        private int _selectedProductId = -1;
+        private ReportViewModel _viewModel;
+        private bool _isInitialized = false;
 
         public ReportPage()
         {
             this.InitializeComponent();
-            _reportService = (App.Services.GetService(typeof(IReportService)) as IReportService)!;
-            _productService = (App.Services.GetService(typeof(IProductService)) as IProductService)!;
-            _sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
-            _allProducts = new List<Product>();
+            
+            var reportService = (App.Services.GetService(typeof(IReportService)) as IReportService)!;
+            var productService = (App.Services.GetService(typeof(IProductService)) as IProductService)!;
+            var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
+            _viewModel = new ReportViewModel(reportService, productService, sessionService);
+            
+            DataContext = _viewModel;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
             SizeChanged += ReportPage_SizeChanged;
+            
+            _isInitialized = true;
             await LoadProductsAsync();
             await GenerateReportAsync();
+        }
+
+        protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            SizeChanged -= ReportPage_SizeChanged;
+            _isInitialized = false;
         }
 
         private void ReportPage_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
-            RedrawCharts();
+            
+            if (_viewModel?.CurrentReport != null)
+            {
+                RedrawCharts();
+            }
         }
 
         private void ApplyResponsiveLayout(double width, double height)
@@ -60,7 +71,6 @@ namespace MyShop.Views.Pages
 
                 Debug.WriteLine($"[REPORT] Responsive: {viewportSize}, Compact: {isCompact}, Width: {width}");
 
-                // Update padding
                 this.Padding = new Thickness(padding);
             }
             catch (Exception ex)
@@ -73,10 +83,9 @@ namespace MyShop.Views.Pages
         {
             try
             {
-                var token = _sessionService?.GetAuthToken();
-                _allProducts = await _productService.GetProductsAsync(1, 1000, null, null, null, null, null, token);
+                await _viewModel.LoadProductsAsync();
                 
-                foreach (var product in _allProducts.OrderBy(p => p.ProductId))
+                foreach (var product in _viewModel.AllProducts.OrderBy(p => p.ProductId))
                 {
                     ProductCombo.Items.Add(new ComboBoxItem 
                     { 
@@ -88,29 +97,40 @@ namespace MyShop.Views.Pages
             catch (Exception ex)
             {
                 Debug.WriteLine($"[REPORT] Error loading products: {ex.Message}");
+                await ShowErrorAsync($"Failed to load products: {ex.Message}");
             }
         }
 
         private async void OnDateRangeChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
         {
+            if (!_isInitialized || _viewModel == null)
+                return;
+
+            _viewModel.FromDate = FromDatePicker.Date?.DateTime;
+            _viewModel.ToDate = ToDatePicker.Date?.DateTime;
             await GenerateReportAsync();
         }
 
         private void OnTimePeriodChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_currentReport != null && !_isLoading)
-            {
-                RedrawCharts();
-            }
+            if (!_isInitialized || _viewModel == null || _viewModel.CurrentReport == null)
+                return;
+
+            var selected = TimePeriodCombo.SelectedItem as ComboBoxItem;
+            _viewModel.SelectedTimePeriod = selected?.Tag.ToString() ?? "Day";
+            RedrawCharts();
         }
 
         private void OnProductSelected(object sender, SelectionChangedEventArgs e)
         {
+            if (!_isInitialized || _viewModel == null)
+                return;
+
             var selected = ProductCombo.SelectedItem as ComboBoxItem;
             if (selected != null)
             {
-                _selectedProductId = int.Parse(selected.Tag.ToString());
-                if (_currentReport != null && !_isLoading)
+                _viewModel.SelectedProductId = int.Parse(selected.Tag.ToString());
+                if (_viewModel.CurrentReport != null)
                 {
                     RedrawCharts();
                 }
@@ -119,73 +139,54 @@ namespace MyShop.Views.Pages
 
         private async Task GenerateReportAsync()
         {
-            if (_isLoading)
+            if (_viewModel == null)
                 return;
-
-            _isLoading = true;
 
             try
             {
-                var fromDate = FromDatePicker.Date?.DateTime;
-                var toDate = ToDatePicker.Date?.DateTime.AddDays(1);
-                var token = _sessionService?.GetAuthToken();
-
-                Debug.WriteLine("[REPORT] Generating report...");
-                Debug.WriteLine($"[REPORT] Date Range: {fromDate} to {toDate}");
-
-                _currentReport = await _reportService.GenerateRevenueReportAsync(fromDate, toDate, token);
-
-                TotalRevenueText.Text = $"{_currentReport.TotalRevenue:#,0} ₫";
-                TotalOrdersText.Text = _currentReport.TotalOrders.ToString();
-                AverageOrderValueText.Text = $"{_currentReport.AverageOrderValue:#,0.00} ₫";
-
+                await _viewModel.GenerateReportAsync();
                 RedrawCharts();
-
-                Debug.WriteLine("[REPORT] ✓ Report generated successfully");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[REPORT] ✗ Error generating report: {ex.Message}");
                 await ShowErrorAsync($"Failed to generate report: {ex.Message}");
             }
-            finally
-            {
-                _isLoading = false;
-            }
         }
 
         private void RedrawCharts()
         {
-            if (_currentReport == null)
+            if (_viewModel?.CurrentReport == null)
                 return;
 
-            var timePeriod = (TimePeriodCombo.SelectedItem as ComboBoxItem)?.Tag.ToString() ?? "Day";
+            var timePeriod = _viewModel.SelectedTimePeriod;
             
-            if (timePeriod == "Day" && _currentReport.DailyRevenues.Count > 0)
+            // Revenue Chart
+            if (timePeriod == "Day" && _viewModel.CurrentReport.DailyRevenues.Count > 0)
             {
                 NoDataMessageRevenue.Visibility = Visibility.Collapsed;
-                DrawRevenueBarChart(_currentReport.DailyRevenues, 
+                DrawRevenueBarChart(_viewModel.CurrentReport.DailyRevenues, 
                     d => d.Date.ToString("MM-dd"), 
                     d => d.TotalRevenue);
             }
-            else if (timePeriod == "Week" && _currentReport.WeeklyRevenues.Count > 0)
+            else if (timePeriod == "Week" && _viewModel.CurrentReport.WeeklyRevenues.Count > 0)
             {
                 NoDataMessageRevenue.Visibility = Visibility.Collapsed;
-                DrawRevenueBarChart(_currentReport.WeeklyRevenues, 
+                DrawRevenueBarChart(_viewModel.CurrentReport.WeeklyRevenues, 
                     d => $"{d.WeekStartDate:MM-dd} ~ {d.WeekEndDate.AddDays(-1):MM-dd}", 
                     d => d.TotalRevenue);
             }
-            else if (timePeriod == "Month" && _currentReport.MonthlyRevenues.Count > 0)
+            else if (timePeriod == "Month" && _viewModel.CurrentReport.MonthlyRevenues.Count > 0)
             {
                 NoDataMessageRevenue.Visibility = Visibility.Collapsed;
-                DrawRevenueBarChart(_currentReport.MonthlyRevenues, 
+                DrawRevenueBarChart(_viewModel.CurrentReport.MonthlyRevenues, 
                     d => d.MonthName.Substring(0, 3), 
                     d => d.TotalRevenue);
             }
-            else if (timePeriod == "Year" && _currentReport.YearlyRevenues.Count > 0)
+            else if (timePeriod == "Year" && _viewModel.CurrentReport.YearlyRevenues.Count > 0)
             {
                 NoDataMessageRevenue.Visibility = Visibility.Collapsed;
-                DrawRevenueBarChart(_currentReport.YearlyRevenues, 
+                DrawRevenueBarChart(_viewModel.CurrentReport.YearlyRevenues, 
                     d => d.Year.ToString(), 
                     d => d.TotalRevenue);
             }
@@ -195,87 +196,40 @@ namespace MyShop.Views.Pages
                 RevenueChartCanvas.Children.Clear();
             }
 
-            if (timePeriod == "Day" && _currentReport.DailyRevenues.Count > 0)
+            // Quantity Chart
+            if (timePeriod == "Day" && _viewModel.CurrentReport.DailyRevenues.Count > 0)
             {
                 NoDataMessageQuantity.Visibility = Visibility.Collapsed;
-                DrawQuantityLineChart(_currentReport.DailyRevenues.Cast<dynamic>().ToList(), 
+                DrawQuantityLineChart(_viewModel.CurrentReport.DailyRevenues.Cast<dynamic>().ToList(), 
                     d => ((DailyRevenue)d).Date.ToString("MM-dd"), 
-                    d => GetProductQuantity(((DailyRevenue)d), _selectedProductId));
+                    d => _viewModel.GetProductQuantity((DailyRevenue)d, _viewModel.SelectedProductId));
             }
-            else if (timePeriod == "Week" && _currentReport.WeeklyRevenues.Count > 0)
+            else if (timePeriod == "Week" && _viewModel.CurrentReport.WeeklyRevenues.Count > 0)
             {
                 NoDataMessageQuantity.Visibility = Visibility.Collapsed;
-                DrawQuantityLineChart(_currentReport.WeeklyRevenues.Cast<dynamic>().ToList(), 
+                DrawQuantityLineChart(_viewModel.CurrentReport.WeeklyRevenues.Cast<dynamic>().ToList(), 
                     d => $"{((WeeklyRevenue)d).WeekStartDate:MM-dd} ~ {((WeeklyRevenue)d).WeekEndDate.AddDays(-1):MM-dd}", 
-                    d => GetProductQuantity(((WeeklyRevenue)d), _selectedProductId));
+                    d => _viewModel.GetProductQuantity((WeeklyRevenue)d, _viewModel.SelectedProductId));
             }
-            else if (timePeriod == "Month" && _currentReport.MonthlyRevenues.Count > 0)
+            else if (timePeriod == "Month" && _viewModel.CurrentReport.MonthlyRevenues.Count > 0)
             {
                 NoDataMessageQuantity.Visibility = Visibility.Collapsed;
-                DrawQuantityLineChart(_currentReport.MonthlyRevenues.Cast<dynamic>().ToList(), 
+                DrawQuantityLineChart(_viewModel.CurrentReport.MonthlyRevenues.Cast<dynamic>().ToList(), 
                     d => ((MonthlyRevenue)d).MonthName.Substring(0, 3), 
-                    d => GetProductQuantity(((MonthlyRevenue)d), _selectedProductId));
+                    d => _viewModel.GetProductQuantity((MonthlyRevenue)d, _viewModel.SelectedProductId));
             }
-            else if (timePeriod == "Year" && _currentReport.YearlyRevenues.Count > 0)
+            else if (timePeriod == "Year" && _viewModel.CurrentReport.YearlyRevenues.Count > 0)
             {
                 NoDataMessageQuantity.Visibility = Visibility.Collapsed;
-                DrawQuantityLineChart(_currentReport.YearlyRevenues.Cast<dynamic>().ToList(), 
+                DrawQuantityLineChart(_viewModel.CurrentReport.YearlyRevenues.Cast<dynamic>().ToList(), 
                     d => ((YearlyRevenue)d).Year.ToString(), 
-                    d => GetProductQuantity(((YearlyRevenue)d), _selectedProductId));
+                    d => _viewModel.GetProductQuantity((YearlyRevenue)d, _viewModel.SelectedProductId));
             }
             else
             {
                 NoDataMessageQuantity.Visibility = Visibility.Visible;
                 QuantityChartCanvas.Children.Clear();
             }
-        }
-
-        private string GetWeekDateRange(int year, int weekNumber)
-        {
-            var week = _currentReport?.WeeklyRevenues
-                .FirstOrDefault(w => w.Year == year && w.WeekNumber == weekNumber);
-            
-            week ??= _currentReport?.WeeklyRevenues
-                .FirstOrDefault(w => w.WeekNumber == weekNumber);
-            
-            if (week != null)
-            {
-                return $"{week.WeekStartDate:MM-dd} ~ {week.WeekEndDate.AddDays(-1):MM-dd}";
-            }
-            
-            return $"W{weekNumber}";
-        }
-
-        private int GetProductQuantity(DailyRevenue daily, int productId)
-        {
-            if (productId < 0)
-                return daily.TotalQuantity;
-            var productQuantity = daily.ProductQuantities.FirstOrDefault(pq => pq.ProductId == productId);
-            return productQuantity?.Quantity ?? 0;
-        }
-
-        private int GetProductQuantity(WeeklyRevenue weekly, int productId)
-        {
-            if (productId < 0)
-                return weekly.TotalQuantity;
-            var productQuantity = weekly.ProductQuantities.FirstOrDefault(pq => pq.ProductId == productId);
-            return productQuantity?.Quantity ?? 0;
-        }
-
-        private int GetProductQuantity(MonthlyRevenue monthly, int productId)
-        {
-            if (productId < 0)
-                return monthly.TotalQuantity;
-            var productQuantity = monthly.ProductQuantities.FirstOrDefault(pq => pq.ProductId == productId);
-            return productQuantity?.Quantity ?? 0;
-        }
-
-        private int GetProductQuantity(YearlyRevenue yearly, int productId)
-        {
-            if (productId < 0)
-                return yearly.TotalQuantity;
-            var productQuantity = yearly.ProductQuantities.FirstOrDefault(pq => pq.ProductId == productId);
-            return productQuantity?.Quantity ?? 0;
         }
 
         private void DrawRevenueBarChart<T>(List<T> data, Func<T, string> labelFunc, Func<T, int> valueFunc)
@@ -290,7 +244,6 @@ namespace MyShop.Views.Pages
                 var width = canvas.ActualWidth;
                 var height = canvas.ActualHeight;
                 
-                // Responsive padding - reduce on smaller screens
                 var leftPadding = width < 600 ? 40 : width < 1000 ? 50 : 70;
                 var rightPadding = 20;
                 var topPadding = 20;
@@ -356,7 +309,6 @@ namespace MyShop.Views.Pages
                 var width = canvas.ActualWidth;
                 var height = canvas.ActualHeight;
                 
-                // Responsive padding
                 var leftPadding = width < 600 ? 40 : width < 1000 ? 50 : 70;
                 var rightPadding = 20;
                 var topPadding = 20;
@@ -465,14 +417,6 @@ namespace MyShop.Views.Pages
             canvas.Children.Add(line);
         }
 
-        private void DrawCircle(Canvas canvas, double x, double y, double radius, Color color)
-        {
-            var circle = new Ellipse { Width = radius * 2, Height = radius * 2, Fill = new SolidColorBrush(color) };
-            Canvas.SetLeft(circle, x - radius);
-            Canvas.SetTop(circle, y - radius);
-            canvas.Children.Add(circle);
-        }
-
         private void DrawRectangle(Canvas canvas, double x, double y, double width, double height, Color color)
         {
             var rect = new Rectangle { Width = width, Height = height, Fill = new SolidColorBrush(color) };
@@ -491,13 +435,14 @@ namespace MyShop.Views.Pages
 
         private async Task ShowErrorAsync(string message)
         {
-            var dialog = new ContentDialog { Title = "Error", Content = message, CloseButtonText = "Close", XamlRoot = this.XamlRoot };
+            var dialog = new ContentDialog 
+            { 
+                Title = "Error", 
+                Content = message, 
+                CloseButtonText = "Close", 
+                XamlRoot = this.XamlRoot 
+            };
             await dialog.ShowAsync();
-        }
-
-        private static DateTime AddWeeks(DateTime date, int weeks)
-        {
-            return date.AddDays(weeks * 7);
         }
     }
 }
