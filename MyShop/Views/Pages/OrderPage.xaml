@@ -11,6 +11,10 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
+    <Page.Resources>
+        <converters:PriceConverter x:Key="PriceConverter"/>
+    </Page.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -191,6 +195,7 @@
                 CornerRadius="4">
                 <controls:DataGrid
                     x:Name="OrdersDataGrid"
+                    ItemsSource="{Binding Orders}"
                     AutoGenerateColumns="False"
                     CanUserReorderColumns="True"
                     CanUserResizeColumns="True"
@@ -266,7 +271,7 @@
                 <TextBlock 
                     Grid.Column="0"
                     x:Name="PageInfoText"
-                    Text="Page 1 of 1"
+                    Text="{Binding PageInfo}"
                     VerticalAlignment="Center"
                     FontSize="14"/>
 
@@ -280,12 +285,12 @@
                         x:Name="PreviousButton"
                         Content="← Previous"
                         Click="OnPreviousPageClicked"
-                        IsEnabled="False"/>
+                        IsEnabled="{Binding CanNavigatePrevious}"/>
                     <Button 
                         x:Name="NextButton"
                         Content="Next →"
                         Click="OnNextPageClicked"
-                        IsEnabled="False"/>
+                        IsEnabled="{Binding CanNavigateNext}"/>
                 </StackPanel>
             </Grid>
         </Border>
