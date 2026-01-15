@@ -9,8 +9,8 @@
     DefaultButton="Primary"
     PrimaryButtonClick="OnPrimaryButtonClick">
 
-    <ScrollViewer MaxHeight="600">
-        <StackPanel Spacing="12" MinWidth="450">
+    <ScrollViewer MaxHeight="600" Padding="0,0,16,0">
+        <StackPanel Spacing="12" MinWidth="450" Margin="0,0,8,0">
             <!-- Basic Info -->
             <TextBlock Text="Basic Information" Style="{StaticResource SubtitleTextBlockStyle}"/>
             
@@ -57,17 +57,14 @@
             <!-- Images -->
             <TextBlock Text="Product Images (Minimum 3 required)" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,12,0,0"/>
             
-            <TextBox x:Name="Image1UrlTextBox"
-                     Header="Image 1 URL * (Primary)"
-                     PlaceholderText="https://example.com/image1.jpg"/>
-            
-            <TextBox x:Name="Image2UrlTextBox"
-                     Header="Image 2 URL *"
-                     PlaceholderText="https://example.com/image2.jpg"/>
-            
-            <TextBox x:Name="Image3UrlTextBox"
-                     Header="Image 3 URL *"
-                     PlaceholderText="https://example.com/image3.jpg"/>
+            <StackPanel x:Name="ImagesPanel" Spacing="8">
+                <!-- Images will be added dynamically -->
+            </StackPanel>
+
+            <Button x:Name="AddImageButton" 
+                    Content="+ Add Image URL" 
+                    Click="OnAddImageClick"
+                    HorizontalAlignment="Left"/>
 
             <InfoBar x:Name="ErrorInfoBar"
                      IsOpen="False"

@@ -9,7 +9,7 @@
     DefaultButton="Primary"
     PrimaryButtonClick="OnPrimaryButtonClick">
 
-    <StackPanel Spacing="16" MinWidth="400">
+    <StackPanel Spacing="16" MinWidth="400" Margin="0,0,8,0">
         <TextBox x:Name="NameTextBox"
                  Header="Category Name *"
                  PlaceholderText="Enter category name..."
