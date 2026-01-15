@@ -14,6 +14,7 @@ namespace MyShop.Services
         private const string AuthTokenKey = "AuthToken";
         private const string TokenTimestampKey = "TokenTimestamp";
         private const string LastPageKey = "LastPage";
+        private const string RoleKey = "UserRole";
         private const int SessionExpiryHours = 7 * 24; // 7 days
 
         public void SaveSession(string username, string? token = null)
@@ -103,6 +104,19 @@ namespace MyShop.Services
             var lastPage = _localSettings.Values[LastPageKey] as string;
             Debug.WriteLine($"[SESSION] Retrieved last page: {lastPage ?? "Dashboard (default)"}");
             return lastPage;
+        }
+
+        public void SaveRole(string role)
+        {
+            _localSettings.Values[RoleKey] = role;
+            Debug.WriteLine($"[SESSION] User role saved: {role}");
+        }
+
+        public string? GetRole()
+        {
+            var role = _localSettings.Values[RoleKey] as string;
+            Debug.WriteLine($"[SESSION] Retrieved user role: {role ?? "Not set"}");
+            return role;
         }
     }
 }

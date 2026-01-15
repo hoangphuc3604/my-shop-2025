@@ -64,6 +64,7 @@ public partial class App : Application
             // Navigation and Session Services
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<ISessionService, SessionService>();
+            services.AddSingleton<IAuthorizationService, AuthorizationService>();
 
 
             //Trial License Service

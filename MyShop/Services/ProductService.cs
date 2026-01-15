@@ -12,10 +12,12 @@ namespace MyShop.Services
     public class ProductService : IProductService
     {
         private readonly GraphQLClient _graphQLClient;
+        private readonly IAuthorizationService _authorizationService;
 
-        public ProductService(GraphQLClient graphQLClient)
+        public ProductService(GraphQLClient graphQLClient, IAuthorizationService authorizationService)
         {
             _graphQLClient = graphQLClient;
+            _authorizationService = authorizationService;
         }
 
         public async Task<List<Product>> GetProductsAsync(
@@ -322,7 +324,7 @@ namespace MyShop.Services
                 ProductId = data.ProductId,
                 Name = data.Name ?? string.Empty,
                 Sku = data.Sku ?? string.Empty,
-                ImportPrice = data.ImportPrice,
+                ImportPrice = data.ImportPrice ?? 0,
                 Count = data.Count,
                 Description = data.Description ?? string.Empty,
                 CategoryId = data.Category?.CategoryId ?? 0,
@@ -367,7 +369,7 @@ namespace MyShop.Services
                         ProductId = data.Product.ProductId,
                         Sku = data.Product.Sku ?? string.Empty,
                         Name = data.Product.Name ?? string.Empty,
-                        ImportPrice = data.Product.ImportPrice,
+                        ImportPrice = data.Product.ImportPrice ?? 0,
                         Count = data.Product.Count
                     }
                     : null
@@ -379,6 +381,11 @@ namespace MyShop.Services
             string? description, List<ProductImageInput> images,
             int categoryId, string? token)
         {
+            if (!_authorizationService.HasPermission("CREATE_PRODUCTS"))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to create products");
+            }
+
             // Build images array
             var imagesJson = string.Join(",\n", images.Select((img, idx) => $@"{{
                 url: ""{img.Url}""
@@ -455,6 +462,11 @@ namespace MyShop.Services
             int? count, string? description, List<ProductImageInput>? images,
             int? categoryId, string? token)
         {
+            if (!_authorizationService.HasPermission("UPDATE_PRODUCTS"))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to update products");
+            }
+
             var inputParams = new List<string>();
 
             if (sku != null) inputParams.Add($"sku: \"{sku}\"");
@@ -533,6 +545,11 @@ namespace MyShop.Services
 
         public async Task<bool> DeleteProductAsync(int productId, string? token)
         {
+            if (!_authorizationService.HasPermission("DELETE_PRODUCTS"))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to delete products");
+            }
+
             var mutation = $@"
                 mutation {{
                     deleteProduct(id: ""{productId}"")

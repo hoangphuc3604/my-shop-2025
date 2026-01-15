@@ -37,6 +37,9 @@ namespace MyShop.Services.GraphQL
         [JsonPropertyName("email")]
         public string? Email { get; set; }
 
+        [JsonPropertyName("role")]
+        public string? Role { get; set; }
+
         [JsonPropertyName("createdAt")]
         public string? CreatedAt { get; set; }
 
@@ -154,7 +157,7 @@ namespace MyShop.Services.GraphQL
 
         [JsonPropertyName("importPrice")]
         [JsonConverter(typeof(StringToIntConverter))]
-        public int ImportPrice { get; set; }
+        public int? ImportPrice { get; set; }
 
         [JsonPropertyName("count")]
         [JsonConverter(typeof(StringToIntConverter))]
@@ -326,6 +329,9 @@ namespace MyShop.Services.GraphQL
         {
             switch (reader.TokenType)
             {
+                case JsonTokenType.Null:
+                    return 0;
+
                 case JsonTokenType.String:
                     string? stringValue = reader.GetString();
                     if (int.TryParse(stringValue, out int intValue))

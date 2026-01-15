@@ -35,6 +35,7 @@ public class AuthenticationService : IAccountService
                         userId
                         username
                         email
+                        role
                         lastLogin
                     }
                     message
@@ -92,11 +93,17 @@ public class AuthenticationService : IAccountService
                 var lastLogin = ConvertUnixTimestampToDateTime(userData.LastLogin);
                 Debug.WriteLine($"[AUTH] LastLogin (converted): {lastLogin:o}");
 
-                // Save token to session
+                // Save token and role to session
                 if (!string.IsNullOrEmpty(response.Login.Token))
                 {
                     _sessionService.SaveToken(response.Login.Token);
                     Debug.WriteLine("[AUTH] ✓ Token saved to session");
+                }
+
+                if (!string.IsNullOrEmpty(userData.Role))
+                {
+                    _sessionService.SaveRole(userData.Role);
+                    Debug.WriteLine($"[AUTH] ✓ Role saved to session: {userData.Role}");
                 }
 
                 var user = new User
@@ -104,6 +111,7 @@ public class AuthenticationService : IAccountService
                     UserId = userData.UserId,
                     Username = userData.Username ?? string.Empty,
                     Email = userData.Email ?? string.Empty,
+                    Role = userData.Role ?? string.Empty,
                     IsActive = userData.IsActive,
                     CreatedAt = DateTime.UtcNow,
                     LastLogin = lastLogin

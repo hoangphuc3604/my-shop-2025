@@ -11,11 +11,13 @@ namespace MyShop.Views.Windows;
 public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
+    private readonly IAuthorizationService _authorizationService;
 
-    public MainWindow(MainViewModel viewModel)
+    public MainWindow(MainViewModel viewModel, IAuthorizationService authorizationService)
     {
         InitializeComponent();
         ViewModel = viewModel;
+        _authorizationService = authorizationService;
 
         // Set window size
         this.Title = "MyShop";
@@ -23,6 +25,7 @@ public sealed partial class MainWindow : Window
 
         // Set default page to Dashboard or last visited page
         Activated += MainWindow_Activated;
+        UpdateMenuVisibility();
     }
 
     private void MainWindow_Activated(object? sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
@@ -32,17 +35,17 @@ public sealed partial class MainWindow : Window
             // Get last visited page from session
             var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
             var lastPage = sessionService?.GetLastPage();
-            
+
             NavigationViewItem? targetItem = lastPage switch
             {
                 "Products" => ProductsItem,
                 "Orders" => OrdersItem,
-                "Report" => ReportItem,
-                _ => DashboardItem
+                "Report" when _authorizationService.HasPermission("VIEW_REPORTS") => ReportItem,
+                _ => ViewModel.CanViewDashboard ? DashboardItem : ProductsItem
             };
 
             Debug.WriteLine($"[MAINWINDOW] Restoring to page: {lastPage ?? "Dashboard"}");
-            ViewModel.NavigateToDashboard(targetItem ?? DashboardItem);
+            ViewModel.NavigateToDashboard(targetItem ?? (ViewModel.CanViewDashboard ? DashboardItem : ProductsItem));
         }
         Activated -= MainWindow_Activated;
     }
@@ -57,6 +60,16 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
+            if (item == DashboardItem && !ViewModel.CanViewDashboard)
+            {
+                return;
+            }
+
+            if (item == ReportItem && !ViewModel.CanViewReports)
+            {
+                return;
+            }
+
             ViewModel.SelectedMenuItem = item;
             NavigateToPage(item.Content?.ToString());
         }
@@ -64,6 +77,18 @@ public sealed partial class MainWindow : Window
 
     private void NavigateToPage(string? pageName)
     {
+        string? requiredPermission = pageName switch
+        {
+            "Dashboard" => "VIEW_DASHBOARD",
+            "Report" => "VIEW_REPORTS",
+            _ => null
+        };
+
+        if (requiredPermission != null && !_authorizationService.HasPermission(requiredPermission))
+        {
+            return;
+        }
+
         Type? pageType = pageName switch
         {
             "Dashboard" => typeof(Views.Pages.DashboardPage),
@@ -78,8 +103,14 @@ public sealed partial class MainWindow : Window
             // Save the current page to session
             var sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
             sessionService?.SaveLastPage(pageName ?? "Dashboard");
-            
+
             ContentFrame.Navigate(pageType);
         }
+    }
+
+    private void UpdateMenuVisibility()
+    {
+        DashboardItem.Visibility = ViewModel.CanViewDashboard ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+        ReportItem.Visibility = ViewModel.CanViewReports ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
     }
 }

@@ -16,6 +16,7 @@ namespace MyShop.ViewModels
         private readonly IProductService _productService;
         private readonly ICategoryService _categoryService;
         private readonly ISessionService _sessionService;
+        private readonly IAuthorizationService _authorizationService;
 
         // Collections
         [ObservableProperty]
@@ -88,16 +89,40 @@ namespace MyShop.ViewModels
         [ObservableProperty]
         private string _statusMessage = "Ready";
 
+        // Permissions
+        [ObservableProperty]
+        private bool _canCreateProducts;
+
+        [ObservableProperty]
+        private bool _canUpdateProducts;
+
+        [ObservableProperty]
+        private bool _canDeleteProducts;
+
+        [ObservableProperty]
+        private bool _canCreateCategories;
+
         public ProductViewModel(
             IProductService productService,
             ICategoryService categoryService,
-            ISessionService sessionService)
+            ISessionService sessionService,
+            IAuthorizationService authorizationService)
         {
             _productService = productService;
             _categoryService = categoryService;
             _sessionService = sessionService;
+            _authorizationService = authorizationService;
 
             SelectedSortCriteria = "None";
+            InitializePermissions();
+        }
+
+        private void InitializePermissions()
+        {
+            CanCreateProducts = _authorizationService.HasPermission("CREATE_PRODUCTS");
+            CanUpdateProducts = _authorizationService.HasPermission("UPDATE_PRODUCTS");
+            CanDeleteProducts = _authorizationService.HasPermission("DELETE_PRODUCTS");
+            CanCreateCategories = _authorizationService.HasPermission("CREATE_CATEGORIES");
         }
 
         /// <summary>

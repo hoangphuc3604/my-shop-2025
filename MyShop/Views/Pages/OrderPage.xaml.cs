@@ -14,24 +14,26 @@ namespace MyShop.Views.Pages
 {
     public sealed partial class OrderPage : Page
     {
+        public OrderViewModel ViewModel { get; set; }
         private OrderViewModel _viewModel;
         private OnboardingService _onboardingService;
         private ContentDialog? _currentDialog;
         private bool _isInitialized = false;
-        
+
         private List<OnboardingStep> _onboardingSteps;
         private int _currentOnboardingStep = 0;
 
         public OrderPage()
         {
             this.InitializeComponent();
-            
-            var orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
-            var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
-            _onboardingService = (App.Services.GetService(typeof(OnboardingService)) as OnboardingService)!;
-            
-            _viewModel = new OrderViewModel(orderService, sessionService);
-            
+
+            var viewModel = App.Services.GetService(typeof(OrderViewModel)) as OrderViewModel;
+            ViewModel = viewModel ?? throw new InvalidOperationException("OrderViewModel could not be resolved from services");
+            _viewModel = ViewModel;
+
+            var onboardingService = App.Services.GetService(typeof(OnboardingService)) as OnboardingService;
+            _onboardingService = onboardingService ?? throw new InvalidOperationException("OnboardingService could not be resolved from services");
+
             DataContext = _viewModel;
         }
 

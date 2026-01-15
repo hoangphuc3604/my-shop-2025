@@ -13,6 +13,10 @@ namespace MyShop.Contracts
         string? GetAuthToken();
         bool HasValidToken();
 
+        // Role management
+        void SaveRole(string role);
+        string? GetRole();
+
         // User preferences
         void SaveLastPage(string pageName);
         string? GetLastPage();

@@ -13,6 +13,7 @@ namespace MyShop.Views.Pages
 {
     public sealed partial class AddOrderPage : Page
     {
+        public AddOrderViewModel ViewModel { get; set; }
         private AddOrderViewModel _viewModel;
         private ContentDialog? _currentDialog;
         private bool _isInitialized;
@@ -20,13 +21,10 @@ namespace MyShop.Views.Pages
         public AddOrderPage()
         {
             this.InitializeComponent();
-            
-            var orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
-            var productService = (App.Services.GetService(typeof(IProductService)) as IProductService)!;
-            var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
-            _viewModel = new AddOrderViewModel(orderService, productService, sessionService);
-            
-            DataContext = _viewModel;
+
+            var viewModel = App.Services.GetService(typeof(AddOrderViewModel)) as AddOrderViewModel;
+            ViewModel = viewModel ?? throw new InvalidOperationException("AddOrderViewModel could not be resolved from services");
+            _viewModel = ViewModel;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)

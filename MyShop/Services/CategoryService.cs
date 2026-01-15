@@ -12,10 +12,12 @@ namespace MyShop.Services
     public class CategoryService : ICategoryService
     {
         private readonly GraphQLClient _graphQLClient;
+        private readonly IAuthorizationService _authorizationService;
 
-        public CategoryService(GraphQLClient graphQLClient)
+        public CategoryService(GraphQLClient graphQLClient, IAuthorizationService authorizationService)
         {
             _graphQLClient = graphQLClient;
+            _authorizationService = authorizationService;
         }
 
         public async Task<List<Category>> GetCategoriesAsync(int page, int pageSize, string? search, string? token)
@@ -166,6 +168,11 @@ namespace MyShop.Services
 
         public async Task<Category?> CreateCategoryAsync(string name, string? description, string? token)
         {
+            if (!_authorizationService.HasPermission("CREATE_CATEGORIES"))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to create categories");
+            }
+
             var descriptionParam = description != null ? $"description: \"{description}\"" : "";
             
             var mutation = $@"
@@ -211,6 +218,11 @@ namespace MyShop.Services
 
         public async Task<bool> DeleteCategoryAsync(int categoryId, string? token)
         {
+            if (!_authorizationService.HasPermission("DELETE_CATEGORIES"))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to delete categories");
+            }
+
             var mutation = $@"
                 mutation {{
                     deleteCategory(id: ""{categoryId}"")

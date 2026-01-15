@@ -12,10 +12,12 @@ namespace MyShop.Services
     public class OrderService : IOrderService
     {
         private readonly GraphQLClient _graphQLClient;
+        private readonly IAuthorizationService _authorizationService;
 
-        public OrderService(GraphQLClient graphQLClient)
+        public OrderService(GraphQLClient graphQLClient, IAuthorizationService authorizationService)
         {
             _graphQLClient = graphQLClient;
+            _authorizationService = authorizationService;
         }
 
         public async Task<List<Order>> GetOrdersAsync(int page, int pageSize, DateTime? fromDate, DateTime? toDate, string? token, string? sortBy = null, string? sortOrder = null)
@@ -85,6 +87,10 @@ namespace MyShop.Services
                 Debug.WriteLine("════════════════════════════════════════");
 
                 var response = await _graphQLClient.QueryAsync<PaginatedOrdersResponse>(query, variables, token);
+
+                Debug.WriteLine($"[ORDER] Response received: {response != null}");
+                Debug.WriteLine($"[ORDER] Orders data: {response?.Orders != null}");
+                Debug.WriteLine($"[ORDER] Items count: {response?.Orders?.Items?.Length ?? 0}");
 
                 if (response?.Orders?.Items != null)
                 {
@@ -191,6 +197,11 @@ namespace MyShop.Services
 
         public async Task<Order?> CreateOrderAsync(CreateOrderInput input, string? token)
         {
+            if (!_authorizationService.HasPermission("CREATE_ORDERS"))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to create orders");
+            }
+
             var query = @"
                 mutation Mutation($input: CreateOrderInput!) {
                     addOrder(input: $input) {
@@ -268,6 +279,11 @@ namespace MyShop.Services
 
         public async Task<Order?> UpdateOrderAsync(int orderId, UpdateOrderInput input, string? token)
         {
+            if (!_authorizationService.HasPermission("UPDATE_ORDERS"))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to update orders");
+            }
+
             var query = @"
                 mutation Mutation($updateOrderId: ID!, $input: UpdateOrderInput!) {
                     updateOrder(id: $updateOrderId, input: $input) {
@@ -347,6 +363,11 @@ namespace MyShop.Services
 
         public async Task<bool> DeleteOrderAsync(int orderId, string? token)
         {
+            if (!_authorizationService.HasPermission("DELETE_ORDERS"))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to delete orders");
+            }
+
             var query = @"
                 mutation Mutation($deleteOrderId: ID!) {
                     deleteOrder(id: $deleteOrderId)
@@ -480,7 +501,7 @@ namespace MyShop.Services
                 ProductId = data.ProductId,
                 Name = data.Name ?? string.Empty,
                 Sku = data.Sku ?? string.Empty,
-                ImportPrice = data.ImportPrice,
+                ImportPrice = data.ImportPrice ?? 0,
                 Count = data.Count,
                 Description = data.Description ?? string.Empty,
                 Images = images

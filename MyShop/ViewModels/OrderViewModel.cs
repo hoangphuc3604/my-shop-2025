@@ -14,7 +14,8 @@ namespace MyShop.ViewModels
     {
         private readonly IOrderService _orderService;
         private readonly ISessionService _sessionService;
-        
+        private readonly IAuthorizationService _authorizationService;
+
         private int _currentPage = 1;
         private int _totalPages = 1;
         private int _ordersPerPage = 10;
@@ -24,12 +25,25 @@ namespace MyShop.ViewModels
         private DateTime? _fromDate;
         private DateTime? _toDate;
         private ObservableCollection<Order> _orders;
+        private bool _canCreateOrders;
+        private bool _canUpdateOrders;
+        private bool _canDeleteOrders;
 
-        public OrderViewModel(IOrderService orderService, ISessionService sessionService)
+        public OrderViewModel(IOrderService orderService, ISessionService sessionService, IAuthorizationService authorizationService)
         {
             _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
+            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
             _orders = new ObservableCollection<Order>();
+
+            InitializePermissions();
+        }
+
+        private void InitializePermissions()
+        {
+            CanCreateOrders = _authorizationService.HasPermission("CREATE_ORDERS");
+            CanUpdateOrders = _authorizationService.HasPermission("UPDATE_ORDERS");
+            CanDeleteOrders = _authorizationService.HasPermission("DELETE_ORDERS");
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -104,6 +118,45 @@ namespace MyShop.ViewModels
             }
         }
 
+        public bool CanCreateOrders
+        {
+            get => _canCreateOrders;
+            set
+            {
+                if (_canCreateOrders != value)
+                {
+                    _canCreateOrders = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool CanUpdateOrders
+        {
+            get => _canUpdateOrders;
+            set
+            {
+                if (_canUpdateOrders != value)
+                {
+                    _canUpdateOrders = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool CanDeleteOrders
+        {
+            get => _canDeleteOrders;
+            set
+            {
+                if (_canDeleteOrders != value)
+                {
+                    _canDeleteOrders = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public string SortCriteria
         {
             get => _sortCriteria;
@@ -171,7 +224,10 @@ namespace MyShop.ViewModels
             {
                 var toDateAdjusted = ToDate.HasValue ? ToDate.Value.AddDays(1) : (DateTime?)null;
                 var token = _sessionService.GetAuthToken();
+                var username = _sessionService.GetSavedUsername();
 
+                Debug.WriteLine($"[ORDER_VM] Loading orders for user: {username ?? "No user"}");
+                Debug.WriteLine($"[ORDER_VM] Token present: {!string.IsNullOrEmpty(token)}");
                 Debug.WriteLine($"[ORDER_VM] Loading orders - From: {FromDate}, To: {toDateAdjusted}");
                 Debug.WriteLine($"[ORDER_VM] Sort: {SortCriteria} ({SortOrder}), Items per page: {OrdersPerPage}");
 

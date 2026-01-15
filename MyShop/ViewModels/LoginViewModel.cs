@@ -59,6 +59,7 @@ public partial class LoginViewModel : ObservableObject
                 {
                     _sessionService.SaveSession(Username);
                 }
+                _sessionService.SaveRole(user.Role);
                 _navigationService.NavigateToMain();
             }
             else

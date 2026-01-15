@@ -15,6 +15,7 @@ namespace MyShop.ViewModels
         private readonly IOrderService _orderService;
         private readonly IProductService _productService;
         private readonly ISessionService _sessionService;
+        private readonly IAuthorizationService _authorizationService;
 
         private List<ProductSelection> _productSelections = new();
         private List<ProductSelection> _filteredProducts = new();
@@ -22,17 +23,22 @@ namespace MyShop.ViewModels
         private int _selectedCount;
         private int _totalPrice;
         private string _searchText = string.Empty;
+        private bool _canCreateOrders;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public AddOrderViewModel(
             IOrderService orderService,
             IProductService productService,
-            ISessionService sessionService)
+            ISessionService sessionService,
+            IAuthorizationService authorizationService)
         {
             _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
+            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+
+            CanCreateOrders = _authorizationService.HasPermission("CREATE_ORDERS");
         }
 
         public List<ProductSelection> ProductSelections
@@ -69,6 +75,19 @@ namespace MyShop.ViewModels
                 if (_isLoading != value)
                 {
                     _isLoading = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool CanCreateOrders
+        {
+            get => _canCreateOrders;
+            set
+            {
+                if (_canCreateOrders != value)
+                {
+                    _canCreateOrders = value;
                     OnPropertyChanged();
                 }
             }
