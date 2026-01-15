@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="MyShop.Views.Pages.ConfigPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Padding="24" Background="{ThemeResource SystemChromeLowColor}">
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <Button x:Name="BackButton" Click="OnBackClick" ToolTipService.ToolTip="Back to Login">
+                    <FontIcon Glyph="&#xE72B;" FontSize="16"/>
+                </Button>
+                <TextBlock Text="Server Configuration" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="Configure the server address for your MyShop backend" 
+                       Style="{StaticResource BodyTextBlockStyle}" 
+                       Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" Padding="24">
+            <StackPanel MaxWidth="600" Spacing="24">
+                
+                <!-- Server Address Section -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Server Address" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                    
+                    <TextBox x:Name="ServerAddressTextBox"
+                             Header="GraphQL Endpoint URL"
+                             PlaceholderText="http://localhost:4000"
+                             TextChanged="OnServerAddressChanged"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button x:Name="TestConnectionButton" 
+                                Content="🔗 Test Connection" 
+                                Click="OnTestConnectionClick"/>
+                        
+                        <Button x:Name="ResetDefaultButton" 
+                                Content="Reset to Default" 
+                                Click="OnResetDefaultClick"/>
+                    </StackPanel>
+                    
+                    <!-- Connection Status -->
+                    <InfoBar x:Name="ConnectionStatusBar"
+                             IsOpen="False"
+                             IsClosable="False"/>
+                </StackPanel>
+
+                <!-- Info Section -->
+                <StackPanel Spacing="8" Padding="16" 
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="8">
+                    <TextBlock Text="ℹ️ Information" FontWeight="SemiBold"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}">
+                        <Run Text="• The server address should point to your GraphQL backend"/>
+                        <LineBreak/>
+                        <Run Text="• Default address: "/>
+                        <Run x:Name="DefaultAddressRun" FontWeight="SemiBold"/>
+                        <LineBreak/>
+                        <Run Text="• Changes will take effect after saving"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Save Button -->
+                <Button x:Name="SaveButton" 
+                        Content="💾 Save Configuration" 
+                        Style="{StaticResource AccentButtonStyle}"
+                        Click="OnSaveClick"
+                        HorizontalAlignment="Left"
+                        Padding="24,12"/>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

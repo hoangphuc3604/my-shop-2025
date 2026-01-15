@@ -9,12 +9,17 @@ namespace MyShop.Services
 
         public void NavigateToMain()
         {
-            NavigationRequested?.Invoke(this, new NavigationEventArgs { Target = NavigationTarget.Main });
+            NavigateTo(NavigationTarget.Main);
         }
 
         public void NavigateToLogin()
         {
-            NavigationRequested?.Invoke(this, new NavigationEventArgs { Target = NavigationTarget.Login });
+            NavigateTo(NavigationTarget.Login);
+        }
+
+        public void NavigateTo(NavigationTarget target)
+        {
+            NavigationRequested?.Invoke(this, new NavigationEventArgs { Target = target });
         }
     }
 }

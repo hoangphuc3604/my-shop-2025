@@ -38,8 +38,17 @@ public partial class App : Application
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
 
+            // Config Service must be registered first to get server address
+            services.AddSingleton<IConfigService, ConfigService>();
+
+            // Build temporary provider to get ConfigService
+            var tempProvider = services.BuildServiceProvider();
+            var configService = tempProvider.GetService<IConfigService>();
+            var graphqlEndpoint = configService?.GetServerAddress() ?? configuration["GraphQL:Endpoint"] ?? "http://localhost:4000";
+            
+            Debug.WriteLine($"[APP] Using GraphQL endpoint: {graphqlEndpoint}");
+
             // GraphQL Client and API Services
-            var graphqlEndpoint = configuration["GraphQL:Endpoint"] ?? "http://localhost:4000";
             services.AddSingleton(new GraphQLClient(graphqlEndpoint));
             services.AddSingleton<IOrderService, OrderService>();
             services.AddSingleton<IProductService, ProductService>();
@@ -55,6 +64,7 @@ public partial class App : Application
             // Navigation and Session Services
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<ISessionService, SessionService>();
+
 
             //Trial License Service
             services.AddSingleton<ITrialLicenseService, TrialLicenseService>();
@@ -167,6 +177,9 @@ public partial class App : Application
             case NavigationTarget.Login:
                 NavigateToLogin();
                 break;
+            case NavigationTarget.Config:
+                NavigateToConfig();
+                break;
         }
     }
 
@@ -184,5 +197,19 @@ public partial class App : Application
         loginWindow?.Activate();
         _window?.Close();
         _window = loginWindow;
+    }
+
+    private void NavigateToConfig()
+    {
+        Debug.WriteLine("[APP] Navigating to Config");
+        // Create a new window to host ConfigPage
+        var configWindow = new Window();
+        configWindow.Title = "MyShop - Configuration";
+        configWindow.Content = new MyShop.Views.Pages.ConfigPage();
+        configWindow.Activate();
+        
+        // Close login window when config opens
+        _window?.Close();
+        _window = configWindow;
     }
 }

@@ -7,6 +7,7 @@ namespace MyShop.Contracts
         event EventHandler<NavigationEventArgs>? NavigationRequested;
         void NavigateToMain();
         void NavigateToLogin();
+        void NavigateTo(NavigationTarget target);
     }
 
     public class NavigationEventArgs : EventArgs
@@ -17,6 +18,7 @@ namespace MyShop.Contracts
     public enum NavigationTarget
     {
         Login,
-        Main
+        Main,
+        Config
     }
 }
