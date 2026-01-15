@@ -52,13 +52,13 @@
                     </ToolTipService.ToolTip>
                 </Button>
                 
-                <Button Content="Import" Click="OnImportClick">
+                <Button x:Name="ImportButton" Content="Import" Click="OnImportClick">
                     <ToolTipService.ToolTip>
                         <ToolTip Content="Import products from Excel"/>
                     </ToolTipService.ToolTip>
                 </Button>
-                
-                <Button Content="📥 Download Template" Click="OnDownloadTemplateClick">
+
+                <Button x:Name="DownloadTemplateButton" Content="📥 Download Template" Click="OnDownloadTemplateClick">
                     <ToolTipService.ToolTip>
                         <ToolTip Content="Download Excel template for bulk import"/>
                     </ToolTipService.ToolTip>

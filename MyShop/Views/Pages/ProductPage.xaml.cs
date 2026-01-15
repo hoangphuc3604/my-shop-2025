@@ -24,6 +24,7 @@ namespace MyShop.Views.Pages
         private ICategoryService? _categoryService;
         private IProductService? _productService;
         private OnboardingService _onboardingService;
+        private IAuthorizationService? _authorizationService;
         
         private List<OnboardingStep> _onboardingSteps;
         private int _currentOnboardingStep = 0;
@@ -37,6 +38,7 @@ namespace MyShop.Views.Pages
             _categoryService = App.Services.GetService(typeof(ICategoryService)) as ICategoryService;
             _productService = App.Services.GetService(typeof(IProductService)) as IProductService;
             _onboardingService = (App.Services.GetService(typeof(OnboardingService)) as OnboardingService)!;
+            _authorizationService = App.Services.GetService(typeof(IAuthorizationService)) as IAuthorizationService;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -152,7 +154,7 @@ namespace MyShop.Views.Pages
         private void UpdateUIState()
         {
             LoadingPanel.Visibility = ViewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-            
+
             if (!ViewModel.IsLoading && ViewModel.Products.Count == 0)
             {
                 EmptyStatePanel.Visibility = Visibility.Visible;
@@ -162,6 +164,24 @@ namespace MyShop.Views.Pages
             {
                 EmptyStatePanel.Visibility = Visibility.Collapsed;
                 ProductsListView.Visibility = Visibility.Visible;
+            }
+
+            UpdateBulkButtonsVisibility();
+        }
+
+        private void UpdateBulkButtonsVisibility()
+        {
+            var role = _authorizationService?.GetRole();
+            var isSaleRole = role == "SALE";
+
+            if (FindName("ImportButton") is Button importButton)
+            {
+                importButton.Visibility = isSaleRole ? Visibility.Collapsed : Visibility.Visible;
+            }
+
+            if (FindName("DownloadTemplateButton") is Button downloadTemplateButton)
+            {
+                downloadTemplateButton.Visibility = isSaleRole ? Visibility.Collapsed : Visibility.Visible;
             }
         }
 
