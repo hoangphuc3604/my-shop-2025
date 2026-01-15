@@ -15,6 +15,7 @@
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
         <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
         <converters:InverseCountToVisibilityConverter x:Key="InverseCountToVisibilityConverter"/>
+        <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
     </Page.Resources>
 
     <Grid Padding="24,20">
@@ -26,23 +27,13 @@
         </Grid.RowDefinitions>
 
         <!-- Header Section -->
-        <Grid Grid.Row="0" Margin="0,0,0,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0">
-                <TextBlock Text="Product Management" 
-                          Style="{StaticResource TitleTextBlockStyle}"
-                          Margin="0,0,0,4"/>
-                <TextBlock x:Name="StatusTextBlock" 
-                          Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
-                          Style="{StaticResource CaptionTextBlockStyle}"
-                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-            </StackPanel>
-
-            <StackPanel x:Name="AddProductButton" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <StackPanel Grid.Row="0" Padding="20" Background="{ThemeResource SystemChromeLowColor}" Margin="0,0,0,16">
+            <TextBlock Text="Product Management" Style="{StaticResource HeaderTextBlockStyle}" Margin="0,0,0,10"/>
+            <TextBlock x:Name="StatusTextBlock" 
+                      Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" 
+                      Style="{StaticResource SubtitleTextBlockStyle}" 
+                      Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+            <StackPanel x:Name="AddProductButton" Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
                 <Button Content="Add Product" 
                        Click="OnAddProductClick"
                        Style="{StaticResource AccentButtonStyle}">
@@ -70,7 +61,7 @@
                     </ToolTipService.ToolTip>
                 </Button>
             </StackPanel>
-        </Grid>
+        </StackPanel>
 
         <!-- Filter Section -->
         <Grid Grid.Row="1" 
@@ -251,7 +242,7 @@
                                            CornerRadius="4"
                                            Background="{ThemeResource LayerFillColorAltBrush}"
                                            HorizontalAlignment="Left">
-                                        <Image Source="{x:Bind ImageUrl1}"
+                                        <Image Source="{x:Bind PrimaryImageUrl, Converter={StaticResource StringToImageSourceConverter}}"
                                               Stretch="UniformToFill"/>
                                     </Border>
 
@@ -336,8 +327,7 @@
 
             <!-- Previous Button -->
             <Button Grid.Column="0"
-                   Command="{x:Bind ViewModel.PreviousPageCommand}"
-                   IsEnabled="{x:Bind ViewModel.HasPreviousPage, Mode=OneWay}">
+                   Command="{x:Bind ViewModel.PreviousPageCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon Glyph="&#xE76B;" FontSize="14"/>
                     <TextBlock Text="Previous"/>
@@ -361,8 +351,7 @@
 
             <!-- Next Button -->
             <Button Grid.Column="2"
-                   Command="{x:Bind ViewModel.NextPageCommand}"
-                   IsEnabled="{x:Bind ViewModel.HasNextPage, Mode=OneWay}">
+                   Command="{x:Bind ViewModel.NextPageCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock Text="Next"/>
                     <FontIcon Glyph="&#xE76C;" FontSize="14"/>
