@@ -67,6 +67,11 @@ namespace MyShop.Contracts
         /// Bulk import products from Excel file (Base64 encoded)
         /// </summary>
         Task<BulkImportResult> BulkImportProductsAsync(string fileBase64, string? token);
+
+        /// <summary>
+        /// Download Excel template for bulk import
+        /// </summary>
+        Task<TemplateFile?> DownloadTemplateAsync(string? token);
     }
 
     public class ProductImageInput
@@ -89,5 +94,12 @@ namespace MyShop.Contracts
         public int Row { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? Field { get; set; }
+    }
+
+    public class TemplateFile
+    {
+        public string FileBase64 { get; set; } = string.Empty;
+        public string Filename { get; set; } = string.Empty;
+        public string MimeType { get; set; } = string.Empty;
     }
 }

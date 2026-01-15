@@ -500,4 +500,22 @@ namespace MyShop.Services.GraphQL
         [JsonPropertyName("field")]
         public string? Field { get; set; }
     }
+
+    public class ProductTemplateResponse
+    {
+        [JsonPropertyName("productTemplate")]
+        public TemplateFileData? ProductTemplate { get; set; }
+    }
+
+    public class TemplateFileData
+    {
+        [JsonPropertyName("fileBase64")]
+        public string? FileBase64 { get; set; }
+
+        [JsonPropertyName("filename")]
+        public string? Filename { get; set; }
+
+        [JsonPropertyName("mimeType")]
+        public string? MimeType { get; set; }
+    }
 }

@@ -622,5 +622,50 @@ namespace MyShop.Services
                 throw;
             }
         }
+
+        public async Task<TemplateFile?> DownloadTemplateAsync(string? token)
+        {
+            var query = @"
+                query {
+                    productTemplate {
+                        fileBase64
+                        filename
+                        mimeType
+                    }
+                }";
+
+            try
+            {
+                Debug.WriteLine("");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine("[PRODUCT] DOWNLOADING TEMPLATE");
+                Debug.WriteLine("════════════════════════════════════════");
+
+                var response = await _graphQLClient.QueryAsync<ProductTemplateResponse>(query, null, token);
+
+                if (response?.ProductTemplate != null)
+                {
+                    Debug.WriteLine($"[PRODUCT] ✓ Downloaded template: {response.ProductTemplate.Filename}");
+                    Debug.WriteLine("════════════════════════════════════════");
+                    
+                    return new TemplateFile
+                    {
+                        FileBase64 = response.ProductTemplate.FileBase64 ?? "",
+                        Filename = response.ProductTemplate.Filename ?? "ProductTemplate.xlsx",
+                        MimeType = response.ProductTemplate.MimeType ?? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    };
+                }
+
+                Debug.WriteLine("[PRODUCT] ✗ Failed to download template");
+                Debug.WriteLine("════════════════════════════════════════");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT] ✗ Error downloading template: {ex.Message}");
+                Debug.WriteLine("════════════════════════════════════════");
+                throw;
+            }
+        }
     }
 }

@@ -445,6 +445,51 @@ namespace MyShop.Views.Pages
             }
         }
 
+        private async void OnDownloadTemplateClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine("[PRODUCT_PAGE] Download template");
+                if (_productService == null) return;
+
+                var token = _sessionService?.GetAuthToken();
+                var template = await _productService.DownloadTemplateAsync(token);
+
+                if (template == null)
+                {
+                    await ShowErrorDialog("Error", "Failed to download template.");
+                    return;
+                }
+
+                // Create file picker to save
+                var picker = new FileSavePicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+                picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+                picker.SuggestedFileName = template.Filename;
+                picker.FileTypeChoices.Add("Excel Files", new List<string> { ".xlsx" });
+
+                var file = await picker.PickSaveFileAsync();
+                if (file == null)
+                {
+                    Debug.WriteLine("[PRODUCT_PAGE] Template save cancelled");
+                    return;
+                }
+
+                // Write file
+                var bytes = Convert.FromBase64String(template.FileBase64);
+                await FileIO.WriteBytesAsync(file, bytes);
+
+                await ShowInfoDialog("Template Downloaded", $"Template saved to:\n{file.Path}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT_PAGE] Error downloading template: {ex.Message}");
+                await ShowErrorDialog("Error", $"Failed to download template:\n\n{ex.Message}");
+            }
+        }
+
         private async Task<bool> ShowConfirmDialog(string title, string message)
         {
             var dialog = new ContentDialog
