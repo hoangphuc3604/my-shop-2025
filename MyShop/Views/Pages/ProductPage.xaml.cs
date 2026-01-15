@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Navigation;
 using MyShop.Services;
 using MyShop.ViewModels;
 using MyShop.Contracts;
+using MyShop.Views.Dialogs;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,6 +18,8 @@ namespace MyShop.Views.Pages
     {
         public ProductViewModel ViewModel { get; set; }
         private ISessionService? _sessionService;
+        private ICategoryService? _categoryService;
+        private IProductService? _productService;
         private OnboardingService _onboardingService;
         
         private List<OnboardingStep> _onboardingSteps;
@@ -28,6 +31,8 @@ namespace MyShop.Views.Pages
             var viewModel = App.Services.GetService(typeof(ProductViewModel)) as ProductViewModel;
             ViewModel = viewModel ?? throw new InvalidOperationException("ProductViewModel could not be resolved from services");
             _sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
+            _categoryService = App.Services.GetService(typeof(ICategoryService)) as ICategoryService;
+            _productService = App.Services.GetService(typeof(IProductService)) as IProductService;
             _onboardingService = (App.Services.GetService(typeof(OnboardingService)) as OnboardingService)!;
         }
 
@@ -234,13 +239,25 @@ namespace MyShop.Views.Pages
                 {
                     Debug.WriteLine($"[PRODUCT_PAGE] Edit product #{productId}");
                     var product = ViewModel.Products.FirstOrDefault(p => p.ProductId == productId);
-                    if (product != null)
+                    if (product != null && _productService != null)
                     {
-                        await ShowInfoDialog("Edit Product", 
-                            $"Editing product: {product.Name}\n\n" +
-                            "✓ UI is ready\n" +
-                            "⚠ Backend mutation not yet implemented\n\n" +
-                            "Edit dialog will be added next.");
+                        var dialog = new EditProductDialog();
+                        dialog.XamlRoot = this.XamlRoot;
+                        dialog.SetProduct(product, ViewModel.Categories.Where(c => c.CategoryId > 0));
+
+                        var result = await dialog.ShowAsync();
+                        if (result == ContentDialogResult.Primary && dialog.SelectedCategory != null)
+                        {
+                            var token = _sessionService?.GetAuthToken();
+                            await _productService.UpdateProductAsync(
+                                dialog.ProductId,
+                                dialog.Sku, dialog.ProductName, dialog.ImportPrice,
+                                dialog.Count, dialog.Description, dialog.Images,
+                                dialog.SelectedCategory.CategoryId, token);
+
+                            await ViewModel.LoadProductsCommand.ExecuteAsync(null);
+                            UpdateUIState();
+                        }
                     }
                 }
             }
@@ -260,19 +277,26 @@ namespace MyShop.Views.Pages
                 {
                     Debug.WriteLine($"[PRODUCT_PAGE] Delete product #{productId}");
                     var product = ViewModel.Products.FirstOrDefault(p => p.ProductId == productId);
-                    if (product != null)
+                    if (product != null && _productService != null)
                     {
                         var confirmed = await ShowConfirmDialog(
                             "Delete Product",
-                            $"Are you sure you want to delete '{product.Name}'?\n\n" +
-                            "This action cannot be undone.");
+                            $"Are you sure you want to delete '{product.Name}'?\n\nThis action cannot be undone.");
 
                         if (confirmed)
                         {
-                            await ShowInfoDialog("Delete Product",
-                                "✓ UI is ready\n" +
-                                "⚠ Backend mutation not yet implemented\n\n" +
-                                "Product deletion will be available when backend is ready.");
+                            var token = _sessionService?.GetAuthToken();
+                            var success = await _productService.DeleteProductAsync(productId, token);
+
+                            if (success)
+                            {
+                                await ViewModel.LoadProductsCommand.ExecuteAsync(null);
+                                UpdateUIState();
+                            }
+                            else
+                            {
+                                await ShowErrorDialog("Error", "Failed to delete product. It may have associated orders.");
+                            }
                         }
                     }
                 }
@@ -289,10 +313,24 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Add new product");
-                await ShowInfoDialog("Add Product",
-                    "✓ UI is ready\n" +
-                    "⚠ Backend mutation not yet implemented\n\n" +
-                    "Add product dialog will be added next.");
+                if (_productService == null) return;
+
+                var dialog = new AddProductDialog();
+                dialog.XamlRoot = this.XamlRoot;
+                dialog.SetCategories(ViewModel.Categories.Where(c => c.CategoryId > 0));
+
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary && dialog.SelectedCategory != null)
+                {
+                    var token = _sessionService?.GetAuthToken();
+                    await _productService.CreateProductAsync(
+                        dialog.Sku, dialog.ProductName, dialog.ImportPrice,
+                        dialog.Count, dialog.Description, dialog.Images,
+                        dialog.SelectedCategory.CategoryId, token);
+
+                    await ViewModel.LoadProductsCommand.ExecuteAsync(null);
+                    UpdateUIState();
+                }
             }
             catch (Exception ex)
             {
@@ -306,10 +344,21 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Add new category");
-                await ShowInfoDialog("Add Category",
-                    "✓ UI is ready\n" +
-                    "⚠ Backend mutation not yet implemented\n\n" +
-                    "Add category dialog will be added next.");
+                if (_categoryService == null) return;
+
+                var dialog = new AddCategoryDialog();
+                dialog.XamlRoot = this.XamlRoot;
+
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    var token = _sessionService?.GetAuthToken();
+                    await _categoryService.CreateCategoryAsync(
+                        dialog.CategoryName, dialog.CategoryDescription, token);
+
+                    // Reload categories in ViewModel
+                    await ViewModel.LoadCategoriesCommand.ExecuteAsync(null);
+                }
             }
             catch (Exception ex)
             {
