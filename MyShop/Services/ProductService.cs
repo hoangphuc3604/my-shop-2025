@@ -373,5 +373,192 @@ namespace MyShop.Services
                     : null
             };
         }
+
+        public async Task<Product?> CreateProductAsync(
+            string sku, string name, int importPrice, int count,
+            string? description, List<ProductImageInput> images,
+            int categoryId, string? token)
+        {
+            // Build images array
+            var imagesJson = string.Join(",\n", images.Select((img, idx) => $@"{{
+                url: ""{img.Url}""
+                altText: ""{img.AltText ?? ""}""
+                position: {img.Position ?? idx}
+                isPrimary: {(img.IsPrimary ? "true" : "false")}
+            }}"));
+
+            var descriptionParam = description != null ? $"description: \"{description}\"" : "";
+
+            var mutation = $@"
+                mutation {{
+                    createProduct(input: {{
+                        sku: ""{sku}""
+                        name: ""{name}""
+                        importPrice: {importPrice}
+                        count: {count}
+                        {descriptionParam}
+                        categoryId: {categoryId}
+                        images: [{imagesJson}]
+                    }}) {{
+                        productId
+                        sku
+                        name
+                        importPrice
+                        count
+                        description
+                        categoryId
+                        images {{
+                            productImageId
+                            url
+                            altText
+                            position
+                            isPrimary
+                        }}
+                        category {{
+                            categoryId
+                            name
+                        }}
+                    }}
+                }}";
+
+            try
+            {
+                Debug.WriteLine("");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine("[PRODUCT] CREATING PRODUCT");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[PRODUCT] SKU: {sku}, Name: {name}, Price: {importPrice}, Count: {count}");
+
+                var response = await _graphQLClient.QueryAsync<CreateProductResponse>(mutation, null, token);
+
+                if (response?.CreateProduct != null)
+                {
+                    Debug.WriteLine($"[PRODUCT] ✓ Created product #{response.CreateProduct.ProductId}");
+                    Debug.WriteLine("════════════════════════════════════════");
+                    return MapToProduct(response.CreateProduct);
+                }
+
+                Debug.WriteLine("[PRODUCT] ✗ Failed to create product");
+                Debug.WriteLine("════════════════════════════════════════");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT] ✗ Error creating product: {ex.Message}");
+                Debug.WriteLine("════════════════════════════════════════");
+                throw;
+            }
+        }
+
+        public async Task<Product?> UpdateProductAsync(
+            int productId, string? sku, string? name, int? importPrice,
+            int? count, string? description, List<ProductImageInput>? images,
+            int? categoryId, string? token)
+        {
+            var inputParams = new List<string>();
+
+            if (sku != null) inputParams.Add($"sku: \"{sku}\"");
+            if (name != null) inputParams.Add($"name: \"{name}\"");
+            if (importPrice.HasValue) inputParams.Add($"importPrice: {importPrice.Value}");
+            if (count.HasValue) inputParams.Add($"count: {count.Value}");
+            if (description != null) inputParams.Add($"description: \"{description}\"");
+            if (categoryId.HasValue) inputParams.Add($"categoryId: {categoryId.Value}");
+
+            if (images != null && images.Count > 0)
+            {
+                var imagesJson = string.Join(",\n", images.Select((img, idx) => $@"{{
+                    url: ""{img.Url}""
+                    altText: ""{img.AltText ?? ""}""
+                    position: {img.Position ?? idx}
+                    isPrimary: {(img.IsPrimary ? "true" : "false")}
+                }}"));
+                inputParams.Add($"images: [{imagesJson}]");
+            }
+
+            var inputJoined = string.Join("\n", inputParams);
+
+            var mutation = $@"
+                mutation {{
+                    updateProduct(id: ""{productId}"", input: {{
+                        {inputJoined}
+                    }}) {{
+                        productId
+                        sku
+                        name
+                        importPrice
+                        count
+                        description
+                        categoryId
+                        images {{
+                            productImageId
+                            url
+                            altText
+                            position
+                            isPrimary
+                        }}
+                        category {{
+                            categoryId
+                            name
+                        }}
+                    }}
+                }}";
+
+            try
+            {
+                Debug.WriteLine("");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[PRODUCT] UPDATING PRODUCT #{productId}");
+                Debug.WriteLine("════════════════════════════════════════");
+
+                var response = await _graphQLClient.QueryAsync<UpdateProductResponse>(mutation, null, token);
+
+                if (response?.UpdateProduct != null)
+                {
+                    Debug.WriteLine($"[PRODUCT] ✓ Updated product #{productId}");
+                    Debug.WriteLine("════════════════════════════════════════");
+                    return MapToProduct(response.UpdateProduct);
+                }
+
+                Debug.WriteLine($"[PRODUCT] ✗ Failed to update product #{productId}");
+                Debug.WriteLine("════════════════════════════════════════");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT] ✗ Error updating product: {ex.Message}");
+                Debug.WriteLine("════════════════════════════════════════");
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteProductAsync(int productId, string? token)
+        {
+            var mutation = $@"
+                mutation {{
+                    deleteProduct(id: ""{productId}"")
+                }}";
+
+            try
+            {
+                Debug.WriteLine("");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[PRODUCT] DELETING PRODUCT #{productId}");
+                Debug.WriteLine("════════════════════════════════════════");
+
+                var response = await _graphQLClient.QueryAsync<DeleteProductResponse>(mutation, null, token);
+
+                var success = response?.DeleteProduct ?? false;
+                Debug.WriteLine($"[PRODUCT] {(success ? "✓ Deleted" : "✗ Failed to delete")} product #{productId}");
+                Debug.WriteLine("════════════════════════════════════════");
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT] ✗ Error deleting product: {ex.Message}");
+                Debug.WriteLine("════════════════════════════════════════");
+                throw;
+            }
+        }
     }
 }

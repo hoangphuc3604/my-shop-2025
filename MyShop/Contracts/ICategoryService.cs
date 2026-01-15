@@ -21,9 +21,14 @@ namespace MyShop.Contracts
         /// </summary>
         Task<int> GetTotalCategoryCountAsync(string? search, string? token);
 
-        // TODO: Add mutations when backend is ready
-        // Task<Category?> CreateCategoryAsync(CreateCategoryInput input, string? token);
-        // Task<Category?> UpdateCategoryAsync(int categoryId, UpdateCategoryInput input, string? token);
-        // Task<bool> DeleteCategoryAsync(int categoryId, string? token);
+        /// <summary>
+        /// Create a new category
+        /// </summary>
+        Task<Category?> CreateCategoryAsync(string name, string? description, string? token);
+
+        /// <summary>
+        /// Delete a category by ID
+        /// </summary>
+        Task<bool> DeleteCategoryAsync(int categoryId, string? token);
     }
 }

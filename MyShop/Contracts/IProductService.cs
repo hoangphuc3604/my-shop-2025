@@ -42,9 +42,33 @@ namespace MyShop.Contracts
             string? search,
             string? token);
 
-        // TODO: Add mutations when backend is ready
-        // Task<Product?> CreateProductAsync(CreateProductInput input, string? token);
-        // Task<Product?> UpdateProductAsync(int productId, UpdateProductInput input, string? token);
-        // Task<bool> DeleteProductAsync(int productId, string? token);
+        /// <summary>
+        /// Create a new product
+        /// </summary>
+        Task<Product?> CreateProductAsync(
+            string sku, string name, int importPrice, int count, 
+            string? description, List<ProductImageInput> images, 
+            int categoryId, string? token);
+
+        /// <summary>
+        /// Update an existing product
+        /// </summary>
+        Task<Product?> UpdateProductAsync(
+            int productId, string? sku, string? name, int? importPrice, 
+            int? count, string? description, List<ProductImageInput>? images, 
+            int? categoryId, string? token);
+
+        /// <summary>
+        /// Delete a product by ID
+        /// </summary>
+        Task<bool> DeleteProductAsync(int productId, string? token);
+    }
+
+    public class ProductImageInput
+    {
+        public string Url { get; set; } = string.Empty;
+        public string? AltText { get; set; }
+        public int? Position { get; set; }
+        public bool IsPrimary { get; set; }
     }
 }

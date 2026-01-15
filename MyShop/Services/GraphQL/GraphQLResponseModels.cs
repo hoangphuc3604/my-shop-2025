@@ -438,4 +438,36 @@ namespace MyShop.Services.GraphQL
             }
         }
     }
+
+    // ============ MUTATION RESPONSES ============
+
+    public class CreateCategoryResponse
+    {
+        [JsonPropertyName("createCategory")]
+        public CategoryData? CreateCategory { get; set; }
+    }
+
+    public class DeleteCategoryResponse
+    {
+        [JsonPropertyName("deleteCategory")]
+        public bool DeleteCategory { get; set; }
+    }
+
+    public class CreateProductResponse
+    {
+        [JsonPropertyName("createProduct")]
+        public ProductData? CreateProduct { get; set; }
+    }
+
+    public class UpdateProductResponse
+    {
+        [JsonPropertyName("updateProduct")]
+        public ProductData? UpdateProduct { get; set; }
+    }
+
+    public class DeleteProductResponse
+    {
+        [JsonPropertyName("deleteProduct")]
+        public bool DeleteProduct { get; set; }
+    }
 }

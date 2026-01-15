@@ -163,5 +163,80 @@ namespace MyShop.Services
                 Description = data.Description ?? string.Empty
             };
         }
+
+        public async Task<Category?> CreateCategoryAsync(string name, string? description, string? token)
+        {
+            var descriptionParam = description != null ? $"description: \"{description}\"" : "";
+            
+            var mutation = $@"
+                mutation {{
+                    createCategory(input: {{
+                        name: ""{name}""
+                        {descriptionParam}
+                    }}) {{
+                        categoryId
+                        name
+                        description
+                    }}
+                }}";
+
+            try
+            {
+                Debug.WriteLine("");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine("[CATEGORY] CREATING CATEGORY");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[CATEGORY] Name: {name}, Description: {description ?? "none"}");
+
+                var response = await _graphQLClient.QueryAsync<CreateCategoryResponse>(mutation, null, token);
+
+                if (response?.CreateCategory != null)
+                {
+                    Debug.WriteLine($"[CATEGORY] ✓ Created category #{response.CreateCategory.CategoryId}");
+                    Debug.WriteLine("════════════════════════════════════════");
+                    return MapToCategory(response.CreateCategory);
+                }
+
+                Debug.WriteLine("[CATEGORY] ✗ Failed to create category");
+                Debug.WriteLine("════════════════════════════════════════");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CATEGORY] ✗ Error creating category: {ex.Message}");
+                Debug.WriteLine("════════════════════════════════════════");
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteCategoryAsync(int categoryId, string? token)
+        {
+            var mutation = $@"
+                mutation {{
+                    deleteCategory(id: ""{categoryId}"")
+                }}";
+
+            try
+            {
+                Debug.WriteLine("");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[CATEGORY] DELETING CATEGORY #{categoryId}");
+                Debug.WriteLine("════════════════════════════════════════");
+
+                var response = await _graphQLClient.QueryAsync<DeleteCategoryResponse>(mutation, null, token);
+
+                var success = response?.DeleteCategory ?? false;
+                Debug.WriteLine($"[CATEGORY] {(success ? "✓ Deleted" : "✗ Failed to delete")} category #{categoryId}");
+                Debug.WriteLine("════════════════════════════════════════");
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CATEGORY] ✗ Error deleting category: {ex.Message}");
+                Debug.WriteLine("════════════════════════════════════════");
+                throw;
+            }
+        }
     }
 }
