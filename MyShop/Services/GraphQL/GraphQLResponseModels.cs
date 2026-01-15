@@ -470,4 +470,34 @@ namespace MyShop.Services.GraphQL
         [JsonPropertyName("deleteProduct")]
         public bool DeleteProduct { get; set; }
     }
+
+    public class BulkCreateProductsResponse
+    {
+        [JsonPropertyName("bulkCreateProducts")]
+        public BulkUploadResultData? BulkCreateProducts { get; set; }
+    }
+
+    public class BulkUploadResultData
+    {
+        [JsonPropertyName("createdCount")]
+        public int CreatedCount { get; set; }
+
+        [JsonPropertyName("failedCount")]
+        public int FailedCount { get; set; }
+
+        [JsonPropertyName("errors")]
+        public BulkRowErrorData[]? Errors { get; set; }
+    }
+
+    public class BulkRowErrorData
+    {
+        [JsonPropertyName("row")]
+        public int Row { get; set; }
+
+        [JsonPropertyName("message")]
+        public string? Message { get; set; }
+
+        [JsonPropertyName("field")]
+        public string? Field { get; set; }
+    }
 }

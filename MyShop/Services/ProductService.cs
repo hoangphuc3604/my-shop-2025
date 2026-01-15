@@ -560,5 +560,67 @@ namespace MyShop.Services
                 throw;
             }
         }
+
+        public async Task<BulkImportResult> BulkImportProductsAsync(string fileBase64, string? token)
+        {
+            var mutation = $@"
+                mutation {{
+                    bulkCreateProducts(fileBase64: ""{fileBase64}"") {{
+                        createdCount
+                        failedCount
+                        errors {{
+                            row
+                            message
+                            field
+                        }}
+                    }}
+                }}";
+
+            try
+            {
+                Debug.WriteLine("");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine("[PRODUCT] BULK IMPORTING PRODUCTS");
+                Debug.WriteLine("════════════════════════════════════════");
+                Debug.WriteLine($"[PRODUCT] File size: {fileBase64.Length} chars (Base64)");
+
+                var response = await _graphQLClient.QueryAsync<BulkCreateProductsResponse>(mutation, null, token);
+
+                var result = new BulkImportResult();
+
+                if (response?.BulkCreateProducts != null)
+                {
+                    result.CreatedCount = response.BulkCreateProducts.CreatedCount;
+                    result.FailedCount = response.BulkCreateProducts.FailedCount;
+                    
+                    if (response.BulkCreateProducts.Errors != null)
+                    {
+                        result.Errors = response.BulkCreateProducts.Errors
+                            .Select(e => new BulkImportError
+                            {
+                                Row = e.Row,
+                                Message = e.Message ?? "",
+                                Field = e.Field
+                            })
+                            .ToList();
+                    }
+
+                    Debug.WriteLine($"[PRODUCT] ✓ Bulk import completed: {result.CreatedCount} created, {result.FailedCount} failed");
+                }
+                else
+                {
+                    Debug.WriteLine("[PRODUCT] ✗ Bulk import returned null response");
+                }
+
+                Debug.WriteLine("════════════════════════════════════════");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT] ✗ Error bulk importing: {ex.Message}");
+                Debug.WriteLine("════════════════════════════════════════");
+                throw;
+            }
+        }
     }
 }

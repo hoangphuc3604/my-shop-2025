@@ -11,6 +11,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 
 namespace MyShop.Views.Pages
 {
@@ -372,17 +375,73 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Import products");
-                await ShowInfoDialog("Import Products",
-                    "Import feature is planned for future implementation.\n\n" +
-                    "Supported formats:\n" +
-                    "• Excel (.xlsx, .xls)\n" +
-                    "• Access (.accdb, .mdb)\n\n" +
-                    "This feature will be available in a later update.");
+                if (_productService == null) return;
+
+                // Create file picker
+                var picker = new FileOpenPicker();
+                
+                // Get the window handle for WinUI 3
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+                picker.ViewMode = PickerViewMode.List;
+                picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+                picker.FileTypeFilter.Add(".xlsx");
+                picker.FileTypeFilter.Add(".xls");
+
+                var file = await picker.PickSingleFileAsync();
+                if (file == null)
+                {
+                    Debug.WriteLine("[PRODUCT_PAGE] Import cancelled - no file selected");
+                    return;
+                }
+
+                Debug.WriteLine($"[PRODUCT_PAGE] Selected file: {file.Name}");
+
+                // Read file and convert to Base64
+                var buffer = await FileIO.ReadBufferAsync(file);
+                var bytes = new byte[buffer.Length];
+                using (var reader = DataReader.FromBuffer(buffer))
+                {
+                    reader.ReadBytes(bytes);
+                }
+                var fileBase64 = Convert.ToBase64String(bytes);
+
+                // Show loading
+                await ShowInfoDialog("Importing", $"Importing products from {file.Name}...\n\nPlease wait.");
+
+                // Call import service
+                var token = _sessionService?.GetAuthToken();
+                var result = await _productService.BulkImportProductsAsync(fileBase64, token);
+
+                // Show result
+                var resultMessage = $"Import completed!\n\n" +
+                    $"✓ Created: {result.CreatedCount} products\n" +
+                    $"✗ Failed: {result.FailedCount} products";
+
+                if (result.Errors.Count > 0)
+                {
+                    resultMessage += "\n\nErrors:\n";
+                    foreach (var error in result.Errors.Take(5))
+                    {
+                        resultMessage += $"• Row {error.Row}: {error.Message}\n";
+                    }
+                    if (result.Errors.Count > 5)
+                    {
+                        resultMessage += $"... and {result.Errors.Count - 5} more errors";
+                    }
+                }
+
+                await ShowInfoDialog("Import Result", resultMessage);
+
+                // Reload products
+                await ViewModel.LoadProductsCommand.ExecuteAsync(null);
+                UpdateUIState();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[PRODUCT_PAGE] Error importing: {ex.Message}");
-                await ShowErrorDialog("Error", $"Failed to import products: {ex.Message}");
+                await ShowErrorDialog("Import Error", $"Failed to import products:\n\n{ex.Message}");
             }
         }
 

@@ -62,6 +62,11 @@ namespace MyShop.Contracts
         /// Delete a product by ID
         /// </summary>
         Task<bool> DeleteProductAsync(int productId, string? token);
+
+        /// <summary>
+        /// Bulk import products from Excel file (Base64 encoded)
+        /// </summary>
+        Task<BulkImportResult> BulkImportProductsAsync(string fileBase64, string? token);
     }
 
     public class ProductImageInput
@@ -70,5 +75,19 @@ namespace MyShop.Contracts
         public string? AltText { get; set; }
         public int? Position { get; set; }
         public bool IsPrimary { get; set; }
+    }
+
+    public class BulkImportResult
+    {
+        public int CreatedCount { get; set; }
+        public int FailedCount { get; set; }
+        public List<BulkImportError> Errors { get; set; } = new();
+    }
+
+    public class BulkImportError
+    {
+        public int Row { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string? Field { get; set; }
     }
 }

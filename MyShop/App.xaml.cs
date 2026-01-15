@@ -19,6 +19,7 @@ public partial class App : Application
     private INavigationService? _navigationService;
 
     public static IServiceProvider Services => ((App)Current)._serviceProvider!;
+    public static Window? MainWindow => ((App)Current)._window;
 
     public App()
     {
