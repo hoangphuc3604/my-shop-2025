@@ -53,9 +53,13 @@ namespace MyShop.ViewModels
         {
             "None",
             "Name (A-Z)",
+            "Name (Z-A)",
             "Price (Low to High)",
+            "Price (High to Low)",
             "Stock (Low to High)",
-            "SKU"
+            "Stock (High to Low)",
+            "Newest First",
+            "Oldest First"
         };
 
         // Pagination
@@ -63,7 +67,7 @@ namespace MyShop.ViewModels
         private int _currentPage = 1;
 
         [ObservableProperty]
-        private int _pageSize = 20;
+        private int _pageSize = 10;
 
         [ObservableProperty]
         private int _totalPages = 1;
@@ -158,14 +162,10 @@ namespace MyShop.ViewModels
                 
                 // Get category ID for filter (0 means all categories)
                 var categoryId = SelectedCategory?.CategoryId > 0 ? SelectedCategory.CategoryId : (int?)null;
-                
-                // Map sort criteria to backend format
-                // ✅ Backend now supports sorting via ProductListParams
-                var sortBy = MapSortCriteriaToField(SelectedSortCriteria);
 
-                Debug.WriteLine($"[PRODUCT_VM] Loading products - Page: {CurrentPage}, Category: {categoryId?.ToString() ?? "all"}");
+                Debug.WriteLine($"[PRODUCT_VM] Loading products - Page: {CurrentPage}, Category: {categoryId?.ToString() ?? "all"}, Sort: {SelectedSortCriteria ?? "none"}");
 
-                // Load products
+                // Load products - pass raw sort criteria, ProductService will map to backend enum
                 var products = await _productService.GetProductsAsync(
                     CurrentPage,
                     PageSize,
@@ -173,7 +173,7 @@ namespace MyShop.ViewModels
                     MinPriceFilter,
                     MaxPriceFilter,
                     string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim(),
-                    sortBy,
+                    SelectedSortCriteria,  // Pass raw UI string, ProductService will map to backend
                     token);
 
                 // Load total count for pagination
@@ -198,7 +198,9 @@ namespace MyShop.ViewModels
                 if (TotalPages < 1) TotalPages = 1;
                 if (CurrentPage > TotalPages) CurrentPage = TotalPages;
 
-                UpdatePaginationState();
+                // Calculate pagination flags (actual notify happens in finally after IsLoading = false)
+                HasPreviousPage = CurrentPage > 1;
+                HasNextPage = CurrentPage < TotalPages;
 
                 StatusMessage = $"Showing {Products.Count} of {TotalCount} products";
                 
@@ -214,6 +216,7 @@ namespace MyShop.ViewModels
             finally
             {
                 IsLoading = false;
+                UpdatePaginationState();
             }
         }
 
@@ -326,25 +329,6 @@ namespace MyShop.ViewModels
             // Update command can execute states
             PreviousPageCommand.NotifyCanExecuteChanged();
             NextPageCommand.NotifyCanExecuteChanged();
-        }
-
-        /// <summary>
-        /// Map UI sort criteria to backend field name
-        /// </summary>
-        private string? MapSortCriteriaToField(string? criteria)
-        {
-            if (string.IsNullOrEmpty(criteria) || criteria == "None")
-                return null;
-
-            // TODO: Update these when backend implements sorting
-            return criteria switch
-            {
-                "Name (A-Z)" => "name",
-                "Price (Low to High)" => "price",
-                "Stock (Low to High)" => "stock",
-                "SKU" => "sku",
-                _ => null
-            };
         }
 
         // Add this property to ProductViewModel to match usage in ProductPage.xaml.cs
