@@ -12,6 +12,7 @@ namespace MyShop.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Product> Products { get; set; }
+        public DbSet<ProductImage> ProductImages { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
 
@@ -45,14 +46,23 @@ namespace MyShop.Data
                 entity.Property(e => e.Sku).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Description).HasMaxLength(1000);
-                entity.Property(e => e.ImageUrl1).IsRequired().HasMaxLength(500);
-                entity.Property(e => e.ImageUrl2).IsRequired().HasMaxLength(500);
-                entity.Property(e => e.ImageUrl3).IsRequired().HasMaxLength(500);
                 entity.HasIndex(e => e.Sku).IsUnique();
                 entity.HasOne(e => e.Category)
                     .WithMany(c => c.Products)
                     .HasForeignKey(e => e.CategoryId)
                     .OnDelete(DeleteBehavior.Restrict);
+                entity.HasMany(e => e.Images)
+                    .WithOne(i => i.Product)
+                    .HasForeignKey(i => i.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure ProductImage entity
+            modelBuilder.Entity<ProductImage>(entity =>
+            {
+                entity.HasKey(e => e.ProductImageId);
+                entity.Property(e => e.Url).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.AltText).HasMaxLength(200);
             });
 
             // Configure Order entity
@@ -171,9 +181,6 @@ namespace MyShop.Data
                     ImportPrice = importPrice,
                     Count = count,
                     Description = $"High-quality {productName} for professional and personal use",
-                    ImageUrl1 = images[0],
-                    ImageUrl2 = images[1],
-                    ImageUrl3 = images[2],
                     CategoryId = 1
                 });
             }
@@ -230,9 +237,6 @@ namespace MyShop.Data
                     ImportPrice = importPrice,
                     Count = count,
                     Description = $"Premium quality {productName} made from comfortable and durable materials",
-                    ImageUrl1 = images[0],
-                    ImageUrl2 = images[1],
-                    ImageUrl3 = images[2],
                     CategoryId = 2
                 });
             }
@@ -289,9 +293,6 @@ namespace MyShop.Data
                     ImportPrice = importPrice,
                     Count = count,
                     Description = $"Quality {productName} for your home and garden needs",
-                    ImageUrl1 = images[0],
-                    ImageUrl2 = images[1],
-                    ImageUrl3 = images[2],
                     CategoryId = 3
                 });
             }

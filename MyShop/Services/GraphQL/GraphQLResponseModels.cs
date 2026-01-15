@@ -163,17 +163,31 @@ namespace MyShop.Services.GraphQL
         [JsonPropertyName("description")]
         public string? Description { get; set; }
 
-        [JsonPropertyName("imageUrl1")]
-        public string? ImageUrl1 { get; set; }
-
-        [JsonPropertyName("imageUrl2")]
-        public string? ImageUrl2 { get; set; }
-
-        [JsonPropertyName("imageUrl3")]
-        public string? ImageUrl3 { get; set; }
+        [JsonPropertyName("images")]
+        public ProductImageData[]? Images { get; set; }
 
         [JsonPropertyName("category")]
         public CategoryData? Category { get; set; }
+    }
+
+    public class ProductImageData
+    {
+        [JsonPropertyName("productImageId")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int ProductImageId { get; set; }
+
+        [JsonPropertyName("url")]
+        public string? Url { get; set; }
+
+        [JsonPropertyName("altText")]
+        public string? AltText { get; set; }
+
+        [JsonPropertyName("position")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int Position { get; set; }
+
+        [JsonPropertyName("isPrimary")]
+        public bool IsPrimary { get; set; }
     }
 
     public class CategoryData

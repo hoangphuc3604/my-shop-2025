@@ -463,6 +463,18 @@ namespace MyShop.Services
 
         private Product MapToProduct(ProductData data)
         {
+            // Map images from GraphQL response to ProductImage entities
+            var images = data.Images?
+                .Select(img => new ProductImage
+                {
+                    ProductImageId = img.ProductImageId,
+                    Url = img.Url ?? string.Empty,
+                    AltText = img.AltText,
+                    Position = img.Position,
+                    IsPrimary = img.IsPrimary
+                })
+                .ToList() ?? new List<ProductImage>();
+
             return new Product
             {
                 ProductId = data.ProductId,
@@ -471,9 +483,7 @@ namespace MyShop.Services
                 ImportPrice = data.ImportPrice,
                 Count = data.Count,
                 Description = data.Description ?? string.Empty,
-                ImageUrl1 = data.ImageUrl1 ?? string.Empty,
-                ImageUrl2 = data.ImageUrl2 ?? string.Empty,
-                ImageUrl3 = data.ImageUrl3 ?? string.Empty
+                Images = images
             };
         }
     }
