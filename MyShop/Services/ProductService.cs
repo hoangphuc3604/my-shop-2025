@@ -29,14 +29,19 @@ namespace MyShop.Services
             string? token)
         {
             // Build ProductListParams for backend
-            // Backend NOW supports: search, page, limit, sortBy, sortOrder, minPrice, maxPrice
-            // NOTE: categoryId is NOT supported by backend - we'll filter client-side
+            // Backend NOW supports: search, page, limit, sortBy, sortOrder, minPrice, maxPrice, categoryId
             
             var paramsBuilder = new List<string>
             {
                 $"page: {page}",
                 $"limit: {pageSize}"
             };
+
+            // ✅ Backend supports category filtering now!
+            if (categoryId.HasValue)
+            {
+                paramsBuilder.Add($"categoryId: {categoryId.Value}");
+            }
 
             if (!string.IsNullOrEmpty(search))
             {
@@ -79,9 +84,12 @@ namespace MyShop.Services
                             description
                             importPrice
                             count
-                            imageUrl1
-                            imageUrl2
-                            imageUrl3
+                            images {{
+                                url
+                                altText
+                                position
+                                isPrimary
+                            }}
                             category {{
                                 categoryId
                                 name
@@ -109,7 +117,7 @@ namespace MyShop.Services
                 Debug.WriteLine($"[PRODUCT] Search: {search ?? "none"}");
                 Debug.WriteLine($"[PRODUCT] Price Range: {minPrice?.ToString() ?? "any"} - {maxPrice?.ToString() ?? "any"} ✅ Backend");
                 Debug.WriteLine($"[PRODUCT] Sort By: {sortBy ?? "none"} ✅ Backend");
-                Debug.WriteLine($"[PRODUCT] Category: {categoryId?.ToString() ?? "all"} ⚠ Client-side (TODO: backend)");
+                Debug.WriteLine($"[PRODUCT] Category: {categoryId?.ToString() ?? "all"} ✅ Backend");
                 Debug.WriteLine("[PRODUCT] Query:");
                 Debug.WriteLine(query);
                 Debug.WriteLine("════════════════════════════════════════");
@@ -122,15 +130,8 @@ namespace MyShop.Services
                 {
                     var products = response.Products.Items.Select(MapToProduct).ToList();
 
-                    // TODO: Remove client-side category filtering when backend supports categoryId parameter
-                    // NOTE: Price filtering and sorting are now handled by backend!
-                    if (categoryId.HasValue)
-                    {
-                        Debug.WriteLine($"[PRODUCT] Applying client-side category filter: {categoryId.Value}");
-                        products = products.Where(p => p.CategoryId == categoryId.Value).ToList();
-                        Debug.WriteLine($"[PRODUCT] After category filter: {products.Count} products");
-                    }
-
+                    // ✅ Category filtering now handled by backend!
+                    Debug.WriteLine($"[PRODUCT] Received {products.Count} products from backend");
                     Debug.WriteLine("════════════════════════════════════════");
 
                     return products;
@@ -210,12 +211,18 @@ namespace MyShop.Services
             string? token)
         {
             // Fetch first page to get pagination info with total count
-            // NOTE: Backend now supports price filters, but not categoryId
+            // Backend now supports all filters including categoryId
             var paramsBuilder = new List<string>
             {
                 "page: 1",
                 "limit: 1"
             };
+
+            // ✅ Backend supports category filtering
+            if (categoryId.HasValue)
+            {
+                paramsBuilder.Add($"categoryId: {categoryId.Value}");
+            }
 
             if (!string.IsNullOrEmpty(search))
             {
@@ -248,18 +255,11 @@ namespace MyShop.Services
 
             try
             {
-                Debug.WriteLine($"[PRODUCT] Getting total count (search: {search ?? "none"}, price: {minPrice}-{maxPrice})");
+                Debug.WriteLine($"[PRODUCT] Getting total count (category: {categoryId?.ToString() ?? "all"}, search: {search ?? "none"}, price: {minPrice}-{maxPrice})");
 
                 var response = await _graphQLClient.QueryAsync<PaginatedProductsResponse>(query, null, token);
 
                 var count = response?.Products?.Pagination?.TotalCount ?? 0;
-                
-                // TODO: When backend supports categoryId filter, total count will be accurate
-                // Currently categoryId filtering happens client-side after fetching
-                if (categoryId.HasValue)
-                {
-                    Debug.WriteLine($"[PRODUCT] Note: Category filter (ID={categoryId}) not applied to count (client-side only)");
-                }
 
                 Debug.WriteLine($"[PRODUCT] Total count from backend: {count}");
 
@@ -285,15 +285,38 @@ namespace MyShop.Services
             return uiSortCriteria switch
             {
                 "Name (A-Z)" => ("NAME", "ASC"),
+                "Name (Z-A)" => ("NAME", "DESC"),
                 "Price (Low to High)" => ("IMPORT_PRICE", "ASC"),
+                "Price (High to Low)" => ("IMPORT_PRICE", "DESC"),
                 "Stock (Low to High)" => ("COUNT", "ASC"),
-                "SKU" => ("PRODUCT_ID", "ASC"),
+                "Stock (High to Low)" => ("COUNT", "DESC"),
+                "Newest First" => ("CREATED_AT", "DESC"),
+                "Oldest First" => ("CREATED_AT", "ASC"),
                 _ => (null, "ASC")
             };
         }
 
         private Product MapToProduct(ProductData data)
         {
+            // Map images from GraphQL response to ProductImage entities
+            var images = data.Images?
+                .Select(img => new ProductImage
+                {
+                    ProductImageId = img.ProductImageId,
+                    Url = img.Url ?? string.Empty,
+                    AltText = img.AltText,
+                    Position = img.Position,
+                    IsPrimary = img.IsPrimary
+                })
+                .ToList() ?? new List<ProductImage>();
+
+            // Calculate primary image URL
+            var primaryImageUrl = images
+                .OrderBy(i => i.Position)
+                .FirstOrDefault(i => i.IsPrimary)?.Url 
+                ?? images.OrderBy(i => i.Position).FirstOrDefault()?.Url 
+                ?? string.Empty;
+
             return new Product
             {
                 ProductId = data.ProductId,
@@ -302,10 +325,9 @@ namespace MyShop.Services
                 ImportPrice = data.ImportPrice,
                 Count = data.Count,
                 Description = data.Description ?? string.Empty,
-                ImageUrl1 = data.ImageUrl1 ?? string.Empty,
-                ImageUrl2 = data.ImageUrl2 ?? string.Empty,
-                ImageUrl3 = data.ImageUrl3 ?? string.Empty,
                 CategoryId = data.Category?.CategoryId ?? 0,
+                Images = images,
+                PrimaryImageUrl = primaryImageUrl,
                 // Populate Category navigation property for UI binding
                 Category = data.Category != null ? new Category
                 {
