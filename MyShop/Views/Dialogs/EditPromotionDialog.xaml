@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="MyShop.Views.Dialogs.EditPromotionDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:MyShop.Converters"
+    Title="Edit Promotion"
+    PrimaryButtonText="Save"
+    CloseButtonText="Cancel">
+
+    <Grid Padding="12" RowSpacing="16" MinWidth="500">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Code -->
+        <TextBox Grid.Row="0" x:Name="CodeBox" Header="Code"/>
+
+        <!-- Description -->
+        <TextBox Grid.Row="1" x:Name="DescriptionBox" Header="Description" AcceptsReturn="True" Height="80"/>
+
+        <!-- Discount Info -->
+        <Grid Grid.Row="2" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0" x:Name="DiscountTypeBox" Header="Discount Type" HorizontalAlignment="Stretch">
+                <ComboBoxItem Content="PERCENTAGE"/>
+                <ComboBoxItem Content="FIXED"/>
+            </ComboBox>
+            <TextBox Grid.Column="1" x:Name="DiscountValueBox" Header="Discount Value"/>
+        </Grid>
+
+        <!-- Target Info -->
+        <Grid Grid.Row="3" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0" x:Name="AppliesToBox" Header="Applies To" HorizontalAlignment="Stretch">
+                <ComboBoxItem Content="ALL"/>
+                <ComboBoxItem Content="PRODUCTS"/>
+                <ComboBoxItem Content="CATEGORIES"/>
+            </ComboBox>
+            <TextBox Grid.Column="1" x:Name="AppliesToIdsBox" Header="AppliesTo IDs (comma separated)" />
+        </Grid>
+
+        <!-- Date Range -->
+        <Grid Grid.Row="4" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <CalendarDatePicker Grid.Column="0" x:Name="StartDatePicker" Header="Start Date" HorizontalAlignment="Stretch"/>
+            <CalendarDatePicker Grid.Column="1" x:Name="EndDatePicker" Header="End Date" HorizontalAlignment="Stretch"/>
+        </Grid>
+
+        <CheckBox Grid.Row="5" x:Name="IsActiveBox" Content="Is Active"/>
+    </Grid>
+</ContentDialog>
+
+
+

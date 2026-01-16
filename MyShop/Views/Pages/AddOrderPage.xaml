@@ -12,6 +12,8 @@
 
     <Page.Resources>
         <converters:PriceConverter x:Key="PriceConverter"/>
+        <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+        <converters:InverseCountToVisibilityConverter x:Key="InverseCountToVisibilityConverter"/>
     </Page.Resources>
 
     <Grid RowSpacing="0" ColumnSpacing="0">
@@ -144,12 +146,45 @@
                         <Run Text="Products selected: "/>
                         <Run Text="{Binding SelectedCount}" FontWeight="SemiBold"/>
                     </TextBlock>
+
+                    <ComboBox
+                        Header="Promotion Code (Optional)"
+                        ItemsSource="{Binding AvailablePromotions}"
+                        SelectedItem="{Binding SelectedPromotion, Mode=TwoWay}"
+                        DisplayMemberPath="Code"
+                        PlaceholderText="Select a promotion (optional)"
+                        Margin="0,8,0,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding Code}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <TextBlock
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                        <Run Text="Subtotal: "/>
+                        <Run Text="{Binding TotalPrice, Converter={StaticResource PriceConverter}}"/>
+                    </TextBlock>
+
+                    <TextBlock
+                        FontSize="13"
+                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                        Visibility="{Binding DiscountAmount, Converter={StaticResource CountToVisibilityConverter}}">
+                        <Run Text="Discount: -"/>
+                        <Run Text="{Binding DiscountAmount, Converter={StaticResource PriceConverter}}"/>
+                    </TextBlock>
+
                     <TextBlock
                         FontSize="14"
                         FontWeight="SemiBold"
                         Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}">
-                        <Run Text="Total Price: "/>
-                        <Run Text="{Binding TotalPrice, Converter={StaticResource PriceConverter}}"/>
+                        <Run Text="Final Price: "/>
+                        <Run Text="{Binding FinalPrice, Converter={StaticResource PriceConverter}}"/>
                     </TextBlock>
                 </StackPanel>
 

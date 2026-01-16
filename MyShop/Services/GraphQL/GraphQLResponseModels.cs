@@ -524,4 +524,163 @@ namespace MyShop.Services.GraphQL
         [JsonPropertyName("mimeType")]
         public string? MimeType { get; set; }
     }
+
+    // ============ PROMOTION MODELS ============
+
+    public class PromotionData
+    {
+        [JsonPropertyName("promotionId")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int PromotionId { get; set; }
+
+        [JsonPropertyName("code")]
+        public string? Code { get; set; }
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
+        [JsonPropertyName("discountType")]
+        public string? DiscountType { get; set; }
+
+        [JsonPropertyName("discountValue")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int DiscountValue { get; set; }
+
+        [JsonPropertyName("appliesTo")]
+        public string? AppliesTo { get; set; }
+
+        [JsonPropertyName("appliesToIds")]
+        public int[]? AppliesToIds { get; set; }
+
+        [JsonPropertyName("startAt")]
+        public string? StartAt { get; set; }
+
+        [JsonPropertyName("endAt")]
+        public string? EndAt { get; set; }
+
+        [JsonPropertyName("isActive")]
+        public bool IsActive { get; set; }
+
+        [JsonPropertyName("createdAt")]
+        public string? CreatedAt { get; set; }
+    }
+
+    public class PromotionsResponse
+    {
+        [JsonPropertyName("promotions")]
+        public PromotionData[]? Promotions { get; set; }
+    }
+
+    public class PaginatedPromotionsResponse
+    {
+        [JsonPropertyName("promotions")]
+        public PaginatedPromotionsResult? Promotions { get; set; }
+    }
+
+    public class PaginatedPromotionsResult
+    {
+        [JsonPropertyName("items")]
+        public PromotionData[]? Items { get; set; }
+
+        [JsonPropertyName("pagination")]
+        public PaginationInfo? Pagination { get; set; }
+    }
+
+    public class PromotionDetailResponse
+    {
+        [JsonPropertyName("promotion")]
+        public PromotionData? Promotion { get; set; }
+    }
+
+    public class CreatePromotionResponse
+    {
+        [JsonPropertyName("createPromotion")]
+        public PromotionData? CreatePromotion { get; set; }
+    }
+
+    public class UpdatePromotionResponse
+    {
+        [JsonPropertyName("updatePromotion")]
+        public PromotionData? UpdatePromotion { get; set; }
+    }
+
+    public class DeletePromotionResponse
+    {
+        [JsonPropertyName("deletePromotion")]
+        public bool DeletePromotion { get; set; }
+    }
+
+    public class ApplyPromotionResponse
+    {
+        [JsonPropertyName("applyPromotion")]
+        public PromotionCalculationData? ApplyPromotion { get; set; }
+    }
+
+    public class PromotionCalculationData
+    {
+        [JsonPropertyName("originalPrice")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int OriginalPrice { get; set; }
+
+        [JsonPropertyName("discountAmount")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int DiscountAmount { get; set; }
+
+        [JsonPropertyName("finalPrice")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int FinalPrice { get; set; }
+
+        [JsonPropertyName("promotion")]
+        public PromotionData? Promotion { get; set; }
+
+        [JsonPropertyName("message")]
+        public string? Message { get; set; }
+    }
+
+    /// <summary>
+    /// Custom converter to handle nullable string values coming from backend and convert them to int?
+    /// </summary>
+    public class NullableStringToIntConverter : JsonConverter<int?>
+    {
+        public override int? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            switch (reader.TokenType)
+            {
+                case JsonTokenType.Null:
+                    return null;
+
+                case JsonTokenType.String:
+                    string? stringValue = reader.GetString();
+                    if (string.IsNullOrEmpty(stringValue))
+                        return null;
+                    if (int.TryParse(stringValue, out int intValue))
+                    {
+                        return intValue;
+                    }
+                    throw new JsonException($"Unable to convert \"{stringValue}\" to int?");
+
+                case JsonTokenType.Number:
+                    if (reader.TryGetInt32(out int number))
+                    {
+                        return number;
+                    }
+                    throw new JsonException("Unable to convert number to int?");
+
+                default:
+                    throw new JsonException($"Unexpected token type {reader.TokenType} when parsing int?");
+            }
+        }
+
+        public override void Write(Utf8JsonWriter writer, int? value, JsonSerializerOptions options)
+        {
+            if (value.HasValue)
+            {
+                writer.WriteNumberValue(value.Value);
+            }
+            else
+            {
+                writer.WriteNullValue();
+            }
+        }
+    }
 }

@@ -32,6 +32,13 @@
                 Content="Orders"
                 Icon="List" />
             <NavigationViewItem
+                x:Name="PromotionItem"
+                Content="Promotions">
+                <NavigationViewItem.Icon>
+                    <FontIcon Glyph="&#xE1D2;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem
                 x:Name="ReportItem"
                 Content="Report">
                 <NavigationViewItem.Icon>

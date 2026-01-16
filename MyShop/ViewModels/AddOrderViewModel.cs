@@ -14,14 +14,19 @@ namespace MyShop.ViewModels
     {
         private readonly IOrderService _orderService;
         private readonly IProductService _productService;
+        private readonly IPromotionService _promotionService;
         private readonly ISessionService _sessionService;
         private readonly IAuthorizationService _authorizationService;
 
         private List<ProductSelection> _productSelections = new();
         private List<ProductSelection> _filteredProducts = new();
+        private List<Promotion> _availablePromotions = new();
+        private Promotion? _selectedPromotion;
         private bool _isLoading;
         private int _selectedCount;
         private int _totalPrice;
+        private int _discountAmount;
+        private int _finalPrice;
         private string _searchText = string.Empty;
         private bool _canCreateOrders;
 
@@ -30,11 +35,13 @@ namespace MyShop.ViewModels
         public AddOrderViewModel(
             IOrderService orderService,
             IProductService productService,
+            IPromotionService promotionService,
             ISessionService sessionService,
             IAuthorizationService authorizationService)
         {
             _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
+            _promotionService = promotionService ?? throw new ArgumentNullException(nameof(promotionService));
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
 
@@ -133,6 +140,59 @@ namespace MyShop.ViewModels
             }
         }
 
+        public List<Promotion> AvailablePromotions
+        {
+            get => _availablePromotions;
+            set
+            {
+                if (_availablePromotions != value)
+                {
+                    _availablePromotions = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public Promotion? SelectedPromotion
+        {
+            get => _selectedPromotion;
+            set
+            {
+                if (_selectedPromotion != value)
+                {
+                    _selectedPromotion = value;
+                    OnPropertyChanged();
+                    CalculateFinalPrice();
+                }
+            }
+        }
+
+        public int DiscountAmount
+        {
+            get => _discountAmount;
+            set
+            {
+                if (_discountAmount != value)
+                {
+                    _discountAmount = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public int FinalPrice
+        {
+            get => _finalPrice;
+            set
+            {
+                if (_finalPrice != value)
+                {
+                    _finalPrice = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public async Task LoadProductsAsync()
         {
             if (IsLoading)
@@ -167,7 +227,9 @@ namespace MyShop.ViewModels
                 FilteredProducts = new List<ProductSelection>(ProductSelections);
                 UpdateSummary();
 
-                Debug.WriteLine($"[ADD_ORDER_VM] ✓ Loaded {ProductSelections.Count} products");
+                await LoadPromotionsAsync();
+
+                Debug.WriteLine($"[ADD_ORDER_VM] ✓ Loaded {ProductSelections.Count} products and {AvailablePromotions.Count} promotions");
             }
             catch (Exception ex)
             {
@@ -178,6 +240,47 @@ namespace MyShop.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        public async Task LoadPromotionsAsync()
+        {
+            try
+            {
+                var token = _sessionService.GetAuthToken();
+                var promotions = await _promotionService.GetActivePromotionsAsync(token);
+
+                AvailablePromotions = promotions.OrderBy(p => p.Code).ToList();
+
+                Debug.WriteLine($"[ADD_ORDER_VM] ✓ Loaded {AvailablePromotions.Count} active promotions");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ADD_ORDER_VM] ✗ Error loading promotions: {ex.Message}");
+                AvailablePromotions = new List<Promotion>();
+            }
+        }
+
+        private void CalculateFinalPrice()
+        {
+            DiscountAmount = 0;
+            FinalPrice = TotalPrice;
+
+            if (SelectedPromotion != null && TotalPrice > 0)
+            {
+                if (SelectedPromotion.DiscountType == PromotionType.PERCENTAGE)
+                {
+                    DiscountAmount = (int)(TotalPrice * SelectedPromotion.DiscountValue / 100.0);
+                }
+                else if (SelectedPromotion.DiscountType == PromotionType.FIXED)
+                {
+                    DiscountAmount = Math.Min(SelectedPromotion.DiscountValue, TotalPrice);
+                }
+
+                FinalPrice = TotalPrice - DiscountAmount;
+            }
+
+            OnPropertyChanged(nameof(DiscountAmount));
+            OnPropertyChanged(nameof(FinalPrice));
         }
 
         public void FilterProducts()
@@ -197,6 +300,7 @@ namespace MyShop.ViewModels
         {
             SelectedCount = ProductSelections.Count(s => s.Quantity > 0);
             TotalPrice = ProductSelections.Sum(s => s.TotalPrice);
+            CalculateFinalPrice();
         }
 
         public async Task<Order?> CreateOrderAsync()

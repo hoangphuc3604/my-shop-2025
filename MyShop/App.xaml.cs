@@ -54,6 +54,7 @@ public partial class App : Application
             services.AddSingleton<IProductService, ProductService>();
             services.AddSingleton<ICategoryService, CategoryService>();
             services.AddSingleton<IAccountService, AuthenticationService>();
+            services.AddSingleton<IPromotionService, PromotionService>();
             services.AddSingleton<IReportService, ReportService>();
             services.AddSingleton<IDashboardService, DashboardService>();
 
@@ -75,6 +76,7 @@ public partial class App : Application
             services.AddTransient<LoginViewModel>();
             services.AddTransient<ProductViewModel>();
             services.AddTransient<OrderViewModel>();
+            services.AddTransient<PromotionViewModel>();
             services.AddTransient<LoginWindow>();
             services.AddTransient<MainWindow>();
             services.AddTransient<MainViewModel>();

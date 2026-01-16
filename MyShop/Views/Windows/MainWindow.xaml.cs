@@ -40,6 +40,7 @@ public sealed partial class MainWindow : Window
             {
                 "Products" => ProductsItem,
                 "Orders" => OrdersItem,
+                "Promotions" => PromotionItem,
                 "Report" when _authorizationService.HasPermission("VIEW_REPORTS") => ReportItem,
                 _ => ViewModel.CanViewDashboard ? DashboardItem : ProductsItem
             };
@@ -61,6 +62,11 @@ public sealed partial class MainWindow : Window
             }
 
             if (item == DashboardItem && !ViewModel.CanViewDashboard)
+            {
+                return;
+            }
+
+            if (item == PromotionItem && !_authorizationService.HasPermission("READ_PROMOTIONS"))
             {
                 return;
             }
@@ -94,6 +100,7 @@ public sealed partial class MainWindow : Window
             "Dashboard" => typeof(Views.Pages.DashboardPage),
             "Products" => typeof(Views.Pages.ProductPage),
             "Orders" => typeof(Views.Pages.OrderPage),
+            "Promotions" => typeof(Views.Pages.PromotionPage),
             "Report" => typeof(Views.Pages.ReportPage),
             _ => null
         };

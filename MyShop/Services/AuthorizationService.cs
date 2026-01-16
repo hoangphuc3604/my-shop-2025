@@ -23,14 +23,19 @@ namespace MyShop.Services
                 "UPDATE_ORDERS",
                 "DELETE_ORDERS",
                 "VIEW_DASHBOARD",
-                "VIEW_REPORTS"
+                "VIEW_REPORTS",
+                "READ_PROMOTIONS",
+                "CREATE_PROMOTIONS",
+                "UPDATE_PROMOTIONS",
+                "DELETE_PROMOTIONS"
             },
             ["SALE"] = new List<string>
             {
                 "READ_PRODUCTS",
                 "READ_CATEGORIES",
                 "CREATE_ORDERS",
-                "READ_ORDERS"
+                "READ_ORDERS",
+                "READ_PROMOTIONS"
             }
         };
 
