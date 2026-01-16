@@ -18,6 +18,7 @@ namespace MyShop.Contracts
     public class CreateOrderInput
     {
         public List<OrderItemInput> OrderItems { get; set; } = new();
+        public string? PromotionCode { get; set; }
     }
 
     public class OrderItemInput
@@ -30,6 +31,7 @@ namespace MyShop.Contracts
     {
         public string? Status { get; set; }
         public List<OrderItemUpdateInput>? OrderItems { get; set; }
+        public string? PromotionCode { get; set; }
     }
 
     public class OrderItemUpdateInput

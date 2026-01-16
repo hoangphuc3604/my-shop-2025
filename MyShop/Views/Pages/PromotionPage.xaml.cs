@@ -194,6 +194,10 @@ namespace MyShop.Views.Pages
                             await ViewModel.LoadPromotionsCommand.ExecuteAsync(null);
                             UpdateUIState();
                         }
+                        else if (!string.IsNullOrEmpty(error))
+                        {
+                            await ShowErrorDialog("Validation Error", error);
+                        }
                     }
                 }
             }
@@ -262,6 +266,10 @@ namespace MyShop.Views.Pages
                 {
                     await ViewModel.LoadPromotionsCommand.ExecuteAsync(null);
                     UpdateUIState();
+                }
+                else if (!string.IsNullOrEmpty(error))
+                {
+                    await ShowErrorDialog("Validation Error", error);
                 }
             }
             catch (Exception ex)

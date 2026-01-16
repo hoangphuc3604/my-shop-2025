@@ -123,6 +123,8 @@ namespace MyShop.Services
                             createdTime
                             finalPrice
                             orderId
+                            appliedPromotionCode
+                            discountAmount
                             orderItems {
                                 orderItemId
                                 quantity
@@ -202,12 +204,14 @@ namespace MyShop.Services
                 throw new UnauthorizedAccessException("You do not have permission to create orders");
             }
 
-            var query = @"
+                var query = @"
                 mutation Mutation($input: CreateOrderInput!) {
                     addOrder(input: $input) {
                         createdTime
                         finalPrice
                         orderId
+                        appliedPromotionCode
+                        discountAmount
                         orderItems {
                             orderId
                             orderItemId
@@ -236,7 +240,8 @@ namespace MyShop.Services
                     {
                         productId = oi.ProductId,
                         quantity = oi.Quantity
-                    }).ToArray()
+                    }).ToArray(),
+                    promotionCode = input.PromotionCode
                 }
             };
 
@@ -313,7 +318,8 @@ namespace MyShop.Services
                 updateOrderId = orderId.ToString(),
                 input = new
                 {
-                    status = input.Status
+                    status = input.Status,
+                    promotionCode = input.PromotionCode
                     // REMOVED: orderItems - backend UpdateOrderInput only accepts status
                 }
             };
@@ -466,6 +472,8 @@ namespace MyShop.Services
                 CreatedTime = DateTime.Parse(data.CreatedTime ?? DateTime.UtcNow.ToString("o")),
                 FinalPrice = data.FinalPrice,
                 Status = data.Status ?? "Created",
+                AppliedPromotionCode = data.AppliedPromotionCode,
+                DiscountAmount = data.DiscountAmount,
                 OrderItems = data.OrderItems?.Select(MapToOrderItem).ToList() ?? new List<OrderItem>()
             };
         }

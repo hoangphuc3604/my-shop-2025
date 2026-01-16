@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -13,10 +14,12 @@ namespace MyShop.ViewModels
     public class OrderDetailsViewModel : INotifyPropertyChanged
     {
         private readonly IOrderService _orderService;
+        private readonly IPromotionService _promotionService;
         private readonly ISessionService _sessionService;
         private readonly OrderExportService _exportService;
 
         private Order? _currentOrder;
+        private Promotion? _appliedPromotion;
         private ObservableCollection<OrderItem> _orderItems = new();
         private bool _isLoading;
 
@@ -24,10 +27,12 @@ namespace MyShop.ViewModels
 
         public OrderDetailsViewModel(
             IOrderService orderService,
+            IPromotionService promotionService,
             ISessionService sessionService,
             OrderExportService exportService)
         {
             _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
+            _promotionService = promotionService ?? throw new ArgumentNullException(nameof(promotionService));
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
             _exportService = exportService ?? throw new ArgumentNullException(nameof(exportService));
         }
@@ -40,6 +45,19 @@ namespace MyShop.ViewModels
                 if (_currentOrder != value)
                 {
                     _currentOrder = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public Promotion? AppliedPromotion
+        {
+            get => _appliedPromotion;
+            set
+            {
+                if (_appliedPromotion != value)
+                {
+                    _appliedPromotion = value;
                     OnPropertyChanged();
                 }
             }
@@ -101,6 +119,15 @@ namespace MyShop.ViewModels
                     }
                     Debug.WriteLine($"[ORDER_DETAILS_VM] ✓ Loaded {OrderItems.Count} order items");
                 }
+
+                if (!string.IsNullOrEmpty(fullOrder.AppliedPromotionCode))
+                {
+                    await LoadAppliedPromotionAsync(fullOrder.AppliedPromotionCode);
+                }
+                else
+                {
+                    AppliedPromotion = null;
+                }
             }
             catch (Exception ex)
             {
@@ -110,6 +137,32 @@ namespace MyShop.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        private async Task LoadAppliedPromotionAsync(string promotionCode)
+        {
+            try
+            {
+                var token = _sessionService.GetAuthToken();
+                var promotions = await _promotionService.GetActivePromotionsAsync(token);
+
+                AppliedPromotion = promotions.FirstOrDefault(p => p.Code == promotionCode.ToUpper());
+
+                if (AppliedPromotion != null)
+                {
+                    Debug.WriteLine($"[ORDER_DETAILS_VM] ✓ Loaded applied promotion: {AppliedPromotion.Code}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[ORDER_DETAILS_VM] ⚠ Applied promotion '{promotionCode}' not found in active promotions");
+                    AppliedPromotion = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ORDER_DETAILS_VM] ✗ Error loading applied promotion: {ex.Message}");
+                AppliedPromotion = null;
             }
         }
 

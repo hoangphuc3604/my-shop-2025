@@ -1,9 +1,13 @@
 ﻿using MyShop.Contracts;
 using MyShop.Data.Models;
 using System;
+using Windows.ApplicationModel.Core;
+using Microsoft.UI.Dispatching;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -12,7 +16,12 @@ namespace MyShop.ViewModels
     public class EditOrderViewModel : INotifyPropertyChanged
     {
         private readonly IOrderService _orderService;
+        private readonly IPromotionService _promotionService;
         private readonly ISessionService _sessionService;
+
+        private System.Collections.ObjectModel.ObservableCollection<Promotion> _availablePromotions = new();
+        private Promotion? _selectedPromotion;
+        private readonly DispatcherQueue? _uiDispatcher;
 
         private Order? _currentOrder;
         private string _selectedStatus = "Created";
@@ -21,10 +30,12 @@ namespace MyShop.ViewModels
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public EditOrderViewModel(IOrderService orderService, ISessionService sessionService)
+        public EditOrderViewModel(IOrderService orderService, IPromotionService promotionService, ISessionService sessionService)
         {
             _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
+            _promotionService = promotionService ?? throw new ArgumentNullException(nameof(promotionService));
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
+            _uiDispatcher = DispatcherQueue.GetForCurrentThread();
         }
 
         public Order? CurrentOrder
@@ -79,6 +90,68 @@ namespace MyShop.ViewModels
             }
         }
 
+        public System.Collections.ObjectModel.ObservableCollection<Promotion> AvailablePromotions
+        {
+            get => _availablePromotions;
+            set
+            {
+                if (_availablePromotions != value)
+                {
+                    _availablePromotions = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public Promotion? SelectedPromotion
+        {
+            get => _selectedPromotion;
+            set
+            {
+                try
+                {
+                    if (_selectedPromotion != value)
+                    {
+                        _selectedPromotion = value;
+                        Debug.WriteLine($"[EDIT_ORDER_VM] SelectedPromotion set to: {_selectedPromotion?.Code ?? "null"}");
+                        OnPropertyChanged();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[EDIT_ORDER_VM] ✗ Error setting SelectedPromotion: {ex}");
+                }
+            }
+        }
+
+        public async Task LoadPromotionsAsync()
+        {
+            try
+            {
+                var token = _sessionService.GetAuthToken();
+                var promotions = await _promotionService.GetActivePromotionsAsync(token);
+                Debug.WriteLine($"[EDIT_ORDER_VM] Loaded {promotions?.Count ?? 0} promotions from service");
+                var ordered = promotions.OrderBy(p => p.Code).ToList();
+
+                if (_uiDispatcher != null)
+                {
+                    _uiDispatcher.TryEnqueue(() =>
+                    {
+                        AvailablePromotions = new System.Collections.ObjectModel.ObservableCollection<Promotion>(ordered);
+                    });
+                }
+                else
+                {
+                    AvailablePromotions = new System.Collections.ObjectModel.ObservableCollection<Promotion>(ordered);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[EDIT_ORDER_VM] ✗ Error loading promotions: {ex}");
+                AvailablePromotions = new System.Collections.ObjectModel.ObservableCollection<Promotion>();
+            }
+        }
+
         public async Task LoadOrderForEditAsync(Order order)
         {
             if (IsLoading)
@@ -96,13 +169,44 @@ namespace MyShop.ViewModels
                     throw new Exception("Order not found.");
                 }
 
-                CurrentOrder = fullOrder;
-                SelectedStatus = fullOrder.Status;
-                OrderItems.Clear();
+                var items = fullOrder.OrderItems?.Select(oi => new ReadOnlyOrderItem(oi)).ToList() ?? new List<ReadOnlyOrderItem>();
 
-                foreach (var item in fullOrder.OrderItems)
+                await LoadPromotionsAsync();
+
+                if (_uiDispatcher != null)
                 {
-                    OrderItems.Add(new ReadOnlyOrderItem(item));
+                    _uiDispatcher.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            CurrentOrder = fullOrder;
+                            SelectedStatus = fullOrder.Status;
+                            OrderItems.Clear();
+                            foreach (var it in items)
+                                OrderItems.Add(it);
+
+                            if (!string.IsNullOrEmpty(fullOrder.AppliedPromotionCode))
+                                SetSelectedPromotionSilently(AvailablePromotions.FirstOrDefault(p => p.Code == fullOrder.AppliedPromotionCode));
+                            else
+                                SetSelectedPromotionSilently(null);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[EDIT_ORDER_VM] ✗ UI update failed: {ex}");
+                        }
+                    });
+                }
+                else
+                {
+                    CurrentOrder = fullOrder;
+                    SelectedStatus = fullOrder.Status;
+                    OrderItems.Clear();
+                    foreach (var it in items)
+                        OrderItems.Add(it);
+                    if (!string.IsNullOrEmpty(fullOrder.AppliedPromotionCode))
+                        SetSelectedPromotionSilently(AvailablePromotions.FirstOrDefault(p => p.Code == fullOrder.AppliedPromotionCode));
+                    else
+                        SetSelectedPromotionSilently(null);
                 }
 
                 Debug.WriteLine($"[EDIT_ORDER_VM] ✓ Order #{order.OrderId} loaded for editing");
@@ -134,7 +238,8 @@ namespace MyShop.ViewModels
                 var updateInput = new UpdateOrderInput
                 {
                     Status = SelectedStatus,
-                    OrderItems = null
+                    OrderItems = null,
+                    PromotionCode = SelectedPromotion?.Code
                 };
 
                 var updatedOrder = await _orderService.UpdateOrderAsync(CurrentOrder.OrderId, updateInput, token);
@@ -164,6 +269,24 @@ namespace MyShop.ViewModels
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public void SetSelectedPromotionSilently(Promotion? promotion)
+        {
+            _selectedPromotion = promotion;
+            Debug.WriteLine("[EDIT_ORDER_VM] (silent) SelectedPromotion set to: " + (_selectedPromotion?.Code ?? "null"));
+        }
+
+        public void NotifySelectedPromotion()
+        {
+            try
+            {
+                OnPropertyChanged(nameof(SelectedPromotion));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[EDIT_ORDER_VM] ✗ NotifySelectedPromotion failed: {ex}");
+            }
         }
     }
 

@@ -29,6 +29,7 @@ namespace MyShop.ViewModels
         private int _finalPrice;
         private string _searchText = string.Empty;
         private bool _canCreateOrders;
+        private string _errorMessage = string.Empty;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -95,6 +96,19 @@ namespace MyShop.ViewModels
                 if (_canCreateOrders != value)
                 {
                     _canCreateOrders = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string ErrorMessage
+        {
+            get => _errorMessage;
+            set
+            {
+                if (_errorMessage != value)
+                {
+                    _errorMessage = value;
                     OnPropertyChanged();
                 }
             }
@@ -199,6 +213,7 @@ namespace MyShop.ViewModels
                 return;
 
             IsLoading = true;
+            ErrorMessage = string.Empty;
 
             try
             {
@@ -234,7 +249,7 @@ namespace MyShop.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ADD_ORDER_VM] ✗ Error loading products: {ex.Message}");
-                throw;
+                ErrorMessage = $"Failed to load products: {ex.Message}";
             }
             finally
             {
@@ -249,7 +264,12 @@ namespace MyShop.ViewModels
                 var token = _sessionService.GetAuthToken();
                 var promotions = await _promotionService.GetActivePromotionsAsync(token);
 
-                AvailablePromotions = promotions.OrderBy(p => p.Code).ToList();
+                var sortedPromotions = promotions.OrderBy(p => p.Code).ToList();
+                AvailablePromotions = sortedPromotions;
+
+                SelectedPromotion = null;
+
+                OnPropertyChanged(nameof(AvailablePromotions));
 
                 Debug.WriteLine($"[ADD_ORDER_VM] ✓ Loaded {AvailablePromotions.Count} active promotions");
             }
@@ -257,6 +277,7 @@ namespace MyShop.ViewModels
             {
                 Debug.WriteLine($"[ADD_ORDER_VM] ✗ Error loading promotions: {ex.Message}");
                 AvailablePromotions = new List<Promotion>();
+                ErrorMessage = $"Failed to load promotions: {ex.Message}";
             }
         }
 
@@ -318,6 +339,7 @@ namespace MyShop.ViewModels
             }
 
             IsLoading = true;
+            ErrorMessage = string.Empty;
 
             try
             {
@@ -333,7 +355,8 @@ namespace MyShop.ViewModels
 
                 var createOrderInput = new CreateOrderInput
                 {
-                    OrderItems = orderItems
+                    OrderItems = orderItems,
+                    PromotionCode = SelectedPromotion?.Code
                 };
 
                 Debug.WriteLine("[ADD_ORDER_VM] Creating order...");
@@ -354,6 +377,7 @@ namespace MyShop.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ADD_ORDER_VM] ✗ Exception: {ex.GetType().Name} - {ex.Message}");
+                ErrorMessage = $"Failed to create order: {ex.Message}";
                 throw;
             }
             finally

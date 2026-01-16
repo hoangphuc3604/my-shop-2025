@@ -9,6 +9,14 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
+    <Page.Resources>
+        <converters:PriceConverter x:Key="PriceConverter"/>
+        <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+        <converters:DiscountTypeToUnitConverter x:Key="DiscountTypeToUnitConverter"/>
+        <converters:DateTimeToStringConverter x:Key="DateTimeToStringConverter"/>
+        <converters:ObjectToVisibilityConverter x:Key="ObjectToVisibilityConverter"/>
+    </Page.Resources>
+
     <Grid RowSpacing="0" ColumnSpacing="0" x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -90,6 +98,66 @@
                         <Run Text="{Binding CurrentOrder.CreatedTime}"/>
                     </TextBlock>
                 </StackPanel>
+
+                <!-- Promotion Section -->
+                <Border
+                    Padding="15"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource SystemAccentColor}"
+                    CornerRadius="6"
+                    Background="{ThemeResource AccentFillColorDisabledBrush}"
+                    Visibility="{Binding AppliedPromotion, Converter={StaticResource ObjectToVisibilityConverter}}"
+                    Margin="0,10,0,0">
+                    <StackPanel Spacing="8">
+                        <TextBlock
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource SystemAccentColor}"
+                            Text="Promotion Applied"/>
+                        <StackPanel Spacing="4">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold">
+                                <Run Text="Code: "/>
+                                <Run Text="{Binding AppliedPromotion.Code}" Foreground="{ThemeResource SystemAccentColor}"/>
+                            </TextBlock>
+                            <TextBlock
+                                FontSize="13"
+                                Foreground="{ThemeResource TextFillColorSecondary}">
+                                <Run Text="{Binding AppliedPromotion.Description}"/>
+                            </TextBlock>
+                            <StackPanel Orientation="Horizontal" Spacing="15" Margin="0,5,0,0">
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondary}">
+                                    <Run Text="Type: "/>
+                                    <Run Text="{Binding AppliedPromotion.DiscountType}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondary}">
+                                    <Run Text="Value: "/>
+                                    <Run Text="{Binding AppliedPromotion.DiscountValue}"/>
+                                    <Run Text="{Binding AppliedPromotion.DiscountType, Converter={StaticResource DiscountTypeToUnitConverter}}"/>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="15" Margin="0,5,0,0">
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorTertiary}">
+                                    <Run Text="Valid from: "/>
+                                    <Run Text="{Binding AppliedPromotion.StartAt, Converter={StaticResource DateTimeToStringConverter}}"/>
+                                </TextBlock>
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorTertiary}">
+                                    <Run Text="Valid until: "/>
+                                    <Run Text="{Binding AppliedPromotion.EndAt, Converter={StaticResource DateTimeToStringConverter}}"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
                 <!-- Items Label -->
                 <TextBlock

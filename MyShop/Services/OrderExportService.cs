@@ -123,6 +123,32 @@ namespace MyShop.Services
                             .PaddingVertical(20)
                             .LineHorizontal(1, unit: Unit.Point);
 
+                        // Promotion Section (if applicable) - aligned labels and values
+                        if (!string.IsNullOrEmpty(order.AppliedPromotionCode))
+                        {
+                            column.Item()
+                                .Padding(12)
+                                .Background("#f0f6f8")
+                                .Border(1)
+                                .Column(pcol =>
+                                {
+                                    pcol.Item().Text("Promotion Applied").Bold().FontSize(12).FontColor("#2c7a7b");
+
+                                    pcol.Item().PaddingTop(8).Grid(g =>
+                                    {
+                                        g.Columns(2);
+
+                                        g.Item().Text("Code:").FontSize(11).FontColor("#34495e");
+                                        g.Item().Text(order.AppliedPromotionCode).FontSize(11).Bold().FontColor("#2c7a7b");
+
+                                        g.Item().Text("Discount:").FontSize(11).FontColor("#34495e");
+                                        g.Item().Text($"-{order.DiscountAmount:N0} ₫").FontSize(11).FontColor("#c0392b");
+                                    });
+                                });
+
+                            column.Item().PaddingTop(10);
+                        }
+
                         // Items Table
                         column.Item()
                             .PaddingTop(20)

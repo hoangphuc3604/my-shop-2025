@@ -114,6 +114,13 @@ namespace MyShop.Services.GraphQL
         [JsonPropertyName("status")]
         public string? Status { get; set; }
 
+        [JsonPropertyName("appliedPromotionCode")]
+        public string? AppliedPromotionCode { get; set; }
+
+        [JsonPropertyName("discountAmount")]
+        [JsonConverter(typeof(StringToIntConverter))]
+        public int DiscountAmount { get; set; }
+
         [JsonPropertyName("orderItems")]
         public OrderItemData[]? OrderItems { get; set; }
     }

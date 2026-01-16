@@ -20,9 +20,10 @@ namespace MyShop.Views.Pages
             this.InitializeComponent();
             
             var orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
+            var promotionService = (App.Services.GetService(typeof(IPromotionService)) as IPromotionService)!;
             var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
             var exportService = new OrderExportService();
-            _viewModel = new OrderDetailsViewModel(orderService, sessionService, exportService);
+            _viewModel = new OrderDetailsViewModel(orderService, promotionService, sessionService, exportService);
             
             DataContext = _viewModel;
         }

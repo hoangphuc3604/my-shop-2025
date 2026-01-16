@@ -348,6 +348,8 @@ namespace MyShop.Services
                 CreatedTime = DateTime.TryParse(data.CreatedTime, out var dt) ? dt : DateTime.MinValue,
                 FinalPrice = data.FinalPrice,
                 Status = data.Status ?? string.Empty,
+                AppliedPromotionCode = data.AppliedPromotionCode,
+                DiscountAmount = data.DiscountAmount,
                 OrderItems = data.OrderItems != null
                     ? data.OrderItems.Select(MapToOrderItem).ToList()
                     : new List<OrderItem>()

@@ -35,6 +35,7 @@ namespace MyShop.Views.Pages
             if (e.NavigationMode != NavigationMode.Back)
             {
                 _isInitialized = true;
+                DataContext = _viewModel;
                 await LoadProductsAsync();
             }
         }
@@ -161,6 +162,11 @@ namespace MyShop.Views.Pages
             {
                 await ShowErrorAsync($"Failed to create order: {ex.Message}");
             }
+        }
+
+        private void OnErrorClosed(InfoBar sender, object args)
+        {
+            _viewModel.ErrorMessage = string.Empty;
         }
 
         private void OnBackClicked(object sender, RoutedEventArgs e)

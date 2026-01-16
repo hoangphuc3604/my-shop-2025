@@ -21,10 +21,24 @@ namespace MyShop.Views.Pages
             this.InitializeComponent();
             
             var orderService = (App.Services.GetService(typeof(IOrderService)) as IOrderService)!;
+            var promotionService = (App.Services.GetService(typeof(IPromotionService)) as IPromotionService)!;
             var sessionService = (App.Services.GetService(typeof(ISessionService)) as ISessionService)!;
-            _viewModel = new EditOrderViewModel(orderService, sessionService);
+            _viewModel = new EditOrderViewModel(orderService, promotionService, sessionService);
             
             DataContext = _viewModel;
+            PromotionComboBox.DropDownOpened += PromotionComboBox_DropDownOpened;
+        }
+
+        private void PromotionComboBox_DropDownOpened(object sender, object e)
+        {
+            try
+            {
+                Debug.WriteLine("[EDIT_ORDER_PAGE] Promotion ComboBox opened");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[EDIT_ORDER_PAGE] Promotion ComboBox open handler error: {ex}");
+            }
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -72,6 +86,14 @@ namespace MyShop.Views.Pages
             try
             {
                 await _viewModel.LoadOrderForEditAsync(order);
+                try
+                {
+                    _viewModel.NotifySelectedPromotion();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[EDIT_ORDER_PAGE] ✗ NotifySelectedPromotion error: {ex}");
+                }
             }
             catch (Exception ex)
             {

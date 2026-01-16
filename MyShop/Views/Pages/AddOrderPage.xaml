@@ -14,6 +14,7 @@
         <converters:PriceConverter x:Key="PriceConverter"/>
         <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
         <converters:InverseCountToVisibilityConverter x:Key="InverseCountToVisibilityConverter"/>
+        <converters:DiscountTypeToUnitConverter x:Key="DiscountTypeToUnitConverter"/>
     </Page.Resources>
 
     <Grid RowSpacing="0" ColumnSpacing="0">
@@ -22,6 +23,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -124,9 +126,24 @@
             </Border>
         </ScrollViewer>
 
-        <!-- Summary and Actions Footer -->
+        <!-- Error Message -->
         <Border
             Grid.Row="4"
+            Padding="20,10,20,0"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource CountToVisibilityConverter}}"
+            Margin="20,15,20,0">
+            <InfoBar
+                Severity="Error"
+                IsOpen="True"
+                Message="{Binding ErrorMessage}"
+                IsClosable="True"
+                CloseButtonClick="OnErrorClosed"/>
+        </Border>
+
+        <!-- Summary and Actions Footer -->
+        <Border
+            Grid.Row="5"
             Padding="20"
             Background="{ThemeResource LayerFillColorDefaultBrush}"
             BorderThickness="0,1,0,0"
@@ -150,15 +167,21 @@
                     <ComboBox
                         Header="Promotion Code (Optional)"
                         ItemsSource="{Binding AvailablePromotions}"
-                        SelectedItem="{Binding SelectedPromotion, Mode=TwoWay}"
-                        DisplayMemberPath="Code"
+                        SelectedItem="{Binding SelectedPromotion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                         PlaceholderText="Select a promotion (optional)"
                         Margin="0,8,0,0">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="{Binding Code}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding DiscountType}" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                        <TextBlock>
+                                            <Run Text="-"/>
+                                            <Run Text="{Binding DiscountValue}"/>
+                                            <Run Text="{Binding DiscountType, Converter={StaticResource DiscountTypeToUnitConverter}}"/>
+                                        </TextBlock>
+                                    </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
