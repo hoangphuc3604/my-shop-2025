@@ -185,7 +185,7 @@
                 HorizontalAlignment="Right"
                 x:Name="ButtonPanel">
                 <Button
-                    Content="Save Status"
+                    Content="Save"
                     Click="OnSaveClicked"
                     Style="{StaticResource AccentButtonStyle}"/>
             </StackPanel>

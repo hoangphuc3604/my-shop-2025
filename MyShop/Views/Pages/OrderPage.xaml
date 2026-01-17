@@ -254,7 +254,7 @@
                                         <Button Content="Delete"
                                                Height="32"
                                                Click="OnDeleteOrderClicked"
-                                               Visibility="{Binding CanDeleteOrders, ElementName=RootPage, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                               Visibility="{Binding CanDeleteOrders, ElementName=RootPage}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </controls:DataGridTemplateColumn.CellTemplate>

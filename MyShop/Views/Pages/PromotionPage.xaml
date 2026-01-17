@@ -201,13 +201,16 @@
                                         <Button Click="OnViewPromotionClick" Tag="{x:Bind PromotionId}" ToolTipService.ToolTip="View Details">
                                             <FontIcon Glyph="&#xE700;" FontSize="16"/>
                                         </Button>
-                                        <Button Click="OnEditPromotionClick" Tag="{x:Bind PromotionId}" ToolTipService.ToolTip="Edit Promotion">
+                                        <Button Click="OnEditPromotionClick"
+                                               Tag="{x:Bind PromotionId}"
+                                               ToolTipService.ToolTip="Edit Promotion"
+                                               Visibility="{Binding ElementName=PageRoot, Path=ViewModel.CanUpdatePromotions, Mode=OneWay}">
                                             <FontIcon Glyph="&#xE70F;" FontSize="16"/>
                                         </Button>
                                         <Button Click="OnDeletePromotionClick"
                                                Tag="{x:Bind PromotionId}"
                                                ToolTipService.ToolTip="Delete Promotion"
-                                               Visibility="{Binding ElementName=PageRoot, Path=ViewModel.CanDeletePromotions, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                               Visibility="{Binding ElementName=PageRoot, Path=ViewModel.CanDeletePromotions, Mode=OneWay}">
                                             <FontIcon Glyph="&#xE74D;" FontSize="16" Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
                                         </Button>
                                     </StackPanel>

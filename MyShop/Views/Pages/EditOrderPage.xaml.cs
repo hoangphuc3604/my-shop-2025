@@ -109,7 +109,7 @@ namespace MyShop.Views.Pages
                 
                 if (success)
                 {
-                    await ShowSuccessAsync($"Order #{_viewModel.CurrentOrder!.OrderId} status changed to '{_viewModel.SelectedStatus}' successfully!");
+                    await ShowSuccessAsync($"Order #{_viewModel.CurrentOrder!.OrderId} updated successfully!");
                     
                     if (Frame.CanGoBack)
                     {
