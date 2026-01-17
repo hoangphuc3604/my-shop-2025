@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml.Data;
+using MyShop.Data.Models;
 using System;
 
 namespace MyShop.Converters
@@ -7,14 +8,20 @@ namespace MyShop.Converters
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is string discountType)
+            if (value == null) return "";
+
+            // Handle both string and Enum values
+            var typeString = value.ToString();
+
+            // Check if string matches known enum names or values
+            if (typeString == nameof(PromotionType.PERCENTAGE) || typeString == "PERCENTAGE")
             {
-                return discountType switch
-                {
-                    "PERCENTAGE" => "%",
-                    "FIXED" => " ₫",
-                    _ => ""
-                };
+                return "%";
+            }
+            
+            if (typeString == nameof(PromotionType.FIXED) || typeString == "FIXED")
+            {
+                return " ₫";
             }
 
             return "";

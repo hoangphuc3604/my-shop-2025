@@ -141,6 +141,14 @@
                                     <Run Text="{Binding AppliedPromotion.DiscountType, Converter={StaticResource DiscountTypeToUnitConverter}}"/>
                                 </TextBlock>
                             </StackPanel>
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                Margin="0,8,0,0">
+                                <Run Text="Discount Applied: -"/>
+                                <Run Text="{Binding CurrentOrder.DiscountAmount, Converter={StaticResource PriceConverter}}"/>
+                            </TextBlock>
                             <StackPanel Orientation="Horizontal" Spacing="15" Margin="0,5,0,0">
                                 <TextBlock
                                     FontSize="12"
@@ -216,22 +224,54 @@
                     Visibility="{Binding OrderItems.Count, Converter={StaticResource CollectionEmptyVisibilityConverter}}"/>
 
                 <!-- Total Price Footer -->
-                <StackPanel
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Spacing="12"
+                <Border
+                    Padding="15"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource ControlElevationBorderBrush}"
+                    CornerRadius="6"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}"
                     Margin="0,20,0,0">
-                    <TextBlock
-                        FontSize="14"
-                        FontWeight="SemiBold"
-                        VerticalAlignment="Center"
-                        Text="Total Price:"/>
-                    <TextBlock
-                        FontSize="16"
-                        FontWeight="Bold"
-                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                        Text="{Binding CurrentOrder.FinalPrice, Converter={StaticResource PriceConverter}}"/>
-                </StackPanel>
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                            <TextBlock
+                                FontSize="13"
+                                VerticalAlignment="Center"
+                                Text="Subtotal:"/>
+                            <TextBlock
+                                FontSize="14"
+                                VerticalAlignment="Center"
+                                Text="{Binding Subtotal, Converter={StaticResource PriceConverter}}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12"
+                                    Visibility="{Binding CurrentOrder.DiscountAmount, Converter={StaticResource CountToVisibilityConverter}}">
+                            <TextBlock
+                                FontSize="13"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                Text="Discount:"/>
+                            <TextBlock
+                                FontSize="14"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource SystemFillColorSuccessBrush}">
+                                <Run Text="-"/>
+                                <Run Text="{Binding CurrentOrder.DiscountAmount, Converter={StaticResource PriceConverter}}"/>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                VerticalAlignment="Center"
+                                Text="Final Price:"/>
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="Bold"
+                                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                VerticalAlignment="Center"
+                                Text="{Binding CurrentOrder.FinalPrice, Converter={StaticResource PriceConverter}}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>

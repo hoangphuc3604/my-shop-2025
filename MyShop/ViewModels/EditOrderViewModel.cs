@@ -137,18 +137,26 @@ namespace MyShop.ViewModels
                 {
                     _uiDispatcher.TryEnqueue(() =>
                     {
-                        AvailablePromotions = new System.Collections.ObjectModel.ObservableCollection<Promotion>(ordered);
+                        AvailablePromotions.Clear();
+                        foreach (var p in ordered)
+                        {
+                            AvailablePromotions.Add(p);
+                        }
                     });
                 }
                 else
                 {
-                    AvailablePromotions = new System.Collections.ObjectModel.ObservableCollection<Promotion>(ordered);
+                    AvailablePromotions.Clear();
+                    foreach (var p in ordered)
+                    {
+                        AvailablePromotions.Add(p);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[EDIT_ORDER_VM] ✗ Error loading promotions: {ex}");
-                AvailablePromotions = new System.Collections.ObjectModel.ObservableCollection<Promotion>();
+                AvailablePromotions.Clear();
             }
         }
 
@@ -186,9 +194,9 @@ namespace MyShop.ViewModels
                                 OrderItems.Add(it);
 
                             if (!string.IsNullOrEmpty(fullOrder.AppliedPromotionCode))
-                                SetSelectedPromotionSilently(AvailablePromotions.FirstOrDefault(p => p.Code == fullOrder.AppliedPromotionCode));
+                                SelectedPromotion = AvailablePromotions.FirstOrDefault(p => p.Code == fullOrder.AppliedPromotionCode);
                             else
-                                SetSelectedPromotionSilently(null);
+                                SelectedPromotion = null;
                         }
                         catch (Exception ex)
                         {
@@ -203,10 +211,11 @@ namespace MyShop.ViewModels
                     OrderItems.Clear();
                     foreach (var it in items)
                         OrderItems.Add(it);
+
                     if (!string.IsNullOrEmpty(fullOrder.AppliedPromotionCode))
-                        SetSelectedPromotionSilently(AvailablePromotions.FirstOrDefault(p => p.Code == fullOrder.AppliedPromotionCode));
+                        SelectedPromotion = AvailablePromotions.FirstOrDefault(p => p.Code == fullOrder.AppliedPromotionCode);
                     else
-                        SetSelectedPromotionSilently(null);
+                        SelectedPromotion = null;
                 }
 
                 Debug.WriteLine($"[EDIT_ORDER_VM] ✓ Order #{order.OrderId} loaded for editing");

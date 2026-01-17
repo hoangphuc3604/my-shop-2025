@@ -41,8 +41,9 @@ namespace MyShop.ViewModels
 
         private void InitializePermissions()
         {
+            var role = _authorizationService.GetRole();
             CanCreateOrders = _authorizationService.HasPermission("CREATE_ORDERS");
-            CanUpdateOrders = _authorizationService.HasPermission("UPDATE_ORDERS");
+            CanUpdateOrders = role == "ADMIN" || role == "SALE";
             CanDeleteOrders = _authorizationService.HasPermission("DELETE_ORDERS");
         }
 

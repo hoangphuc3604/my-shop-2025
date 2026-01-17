@@ -284,10 +284,6 @@ namespace MyShop.Services
 
         public async Task<Order?> UpdateOrderAsync(int orderId, UpdateOrderInput input, string? token)
         {
-            if (!_authorizationService.HasPermission("UPDATE_ORDERS"))
-            {
-                throw new UnauthorizedAccessException("You do not have permission to update orders");
-            }
 
             var query = @"
                 mutation Mutation($updateOrderId: ID!, $input: UpdateOrderInput!) {

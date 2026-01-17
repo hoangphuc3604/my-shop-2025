@@ -86,7 +86,6 @@
                             x:Name="PromotionComboBox"
                             ItemsSource="{Binding AvailablePromotions}"
                             SelectedItem="{Binding SelectedPromotion, Mode=TwoWay}"
-                            DisplayMemberPath="Code"
                             PlaceholderText="Select promotion (optional)">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>

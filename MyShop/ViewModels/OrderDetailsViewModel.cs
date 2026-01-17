@@ -72,9 +72,12 @@ namespace MyShop.ViewModels
                 {
                     _orderItems = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(Subtotal));
                 }
             }
         }
+
+        public int Subtotal => OrderItems.Sum(item => item.TotalPrice);
 
         public bool IsLoading
         {
@@ -119,6 +122,7 @@ namespace MyShop.ViewModels
                     }
                     Debug.WriteLine($"[ORDER_DETAILS_VM] ✓ Loaded {OrderItems.Count} order items");
                 }
+                OnPropertyChanged(nameof(Subtotal));
 
                 if (!string.IsNullOrEmpty(fullOrder.AppliedPromotionCode))
                 {
