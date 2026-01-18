@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "MyShop.Tests (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "MyShop.Tests (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
