@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="MyShop.Views.Dialogs.ProductDetailDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:MyShop.Converters"
+    Title="Product Details"
+    CloseButtonText="Close"
+    DefaultButton="Close"
+    FullSizeDesired="False">
+
+    <ContentDialog.Resources>
+        <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
+    </ContentDialog.Resources>
+
+    <ScrollViewer MaxHeight="620" VerticalScrollBarVisibility="Auto" Padding="8,0,8,0">
+        <StackPanel Spacing="16" MinWidth="460" Margin="8,0,8,0">
+
+                <!-- Image Gallery Section - Fixed Height -->
+                <Grid Height="280">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="200"/>
+                        <RowDefinition Height="80"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Main Image Display Container -->
+                    <Border Grid.Row="0"
+                            CornerRadius="12"
+                            Background="{ThemeResource LayerFillColorAltBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                        <Grid>
+                            <!-- Product Image - Centered with constraints -->
+                            <Image x:Name="MainProductImage"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Margin="10"/>
+                            
+                            <!-- No Image Placeholder -->
+                            <StackPanel x:Name="NoImagePlaceholder"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Visibility="Collapsed">
+                                <FontIcon Glyph="&#xE722;" FontSize="48" 
+                                          Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                <TextBlock Text="No Image Available" 
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,8,0,0"/>
+                            </StackPanel>
+
+                            <!-- Image Counter Badge -->
+                            <Border x:Name="ImageCounterBadge"
+                                    Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+                                    CornerRadius="12"
+                                    Padding="10,5"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom"
+                                    Margin="8"
+                                    Visibility="Collapsed">
+                                <TextBlock x:Name="ImageCounterText"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- Thumbnail Strip -->
+                    <Border Grid.Row="1" 
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Center">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      MaxWidth="650">
+                            <StackPanel x:Name="ThumbnailsPanel" 
+                                        Orientation="Horizontal"
+                                        Spacing="8"
+                                        HorizontalAlignment="Center"/>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
+                <!-- Product Header Section -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="10">
+                        <!-- Product Name -->
+                        <TextBlock x:Name="ProductNameText"
+                                   Style="{StaticResource TitleTextBlockStyle}"
+                                   TextWrapping="Wrap"
+                                   MaxLines="2"
+                                   TextTrimming="CharacterEllipsis"/>
+
+                        <!-- Tags Row -->
+                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left">
+                            <!-- SKU Badge -->
+                            <Border Background="{ThemeResource AccentFillColorDisabledBrush}"
+                                    CornerRadius="4"
+                                    Padding="10,5">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE8EC;" FontSize="12" 
+                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                    <TextBlock x:Name="SkuText"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Category Badge -->
+                            <Border Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
+                                    CornerRadius="4"
+                                    Padding="10,5">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE8FD;" FontSize="12" 
+                                              Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
+                                    <TextBlock x:Name="CategoryText"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Pricing & Stock Section -->
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Price Card -->
+                    <Border Grid.Column="0"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="16">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8C7;" FontSize="18" 
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Import Price" 
+                                           Style="{StaticResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,6,0,0">
+                                <TextBlock x:Name="PriceText"
+                                           Style="{StaticResource SubtitleTextBlockStyle}"
+                                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="₫" 
+                                           Style="{StaticResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,0,1"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Stock Card -->
+                    <Border Grid.Column="1"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="16">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE7B8;" FontSize="18" 
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Stock Quantity" 
+                                           Style="{StaticResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+                                <TextBlock x:Name="StockCountText"
+                                           Style="{StaticResource SubtitleTextBlockStyle}"
+                                           FontWeight="SemiBold"/>
+                                <Border x:Name="StockStatusBadge"
+                                        CornerRadius="4"
+                                        Padding="8,3"
+                                        VerticalAlignment="Center">
+                                    <TextBlock x:Name="StockStatusText"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               FontWeight="SemiBold"/>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Description Section -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE8A4;" FontSize="16" 
+                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="Description" 
+                                       Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                        </StackPanel>
+                        <TextBlock x:Name="DescriptionText"
+                                   Style="{StaticResource BodyTextBlockStyle}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   LineHeight="22"/>
+                        <TextBlock x:Name="NoDescriptionText"
+                                   Text="No description available for this product."
+                                   Style="{StaticResource BodyTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   FontStyle="Italic"
+                                   Visibility="Collapsed"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>

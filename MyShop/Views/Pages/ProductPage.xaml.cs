@@ -242,7 +242,10 @@ namespace MyShop.Views.Pages
                     var product = ViewModel.Products.FirstOrDefault(p => p.ProductId == productId);
                     if (product != null)
                     {
-                        await ShowInfoDialog("View Product", $"Viewing product: {product.Name}\n\nDetails dialog will be implemented next.");
+                        var dialog = new ProductDetailDialog();
+                        dialog.XamlRoot = this.XamlRoot;
+                        dialog.SetProduct(product);
+                        await dialog.ShowAsync();
                     }
                 }
             }
@@ -252,6 +255,7 @@ namespace MyShop.Views.Pages
                 await ShowErrorDialog("Error", $"Failed to view product: {ex.Message}");
             }
         }
+
 
         private async void OnEditProductClick(object sender, RoutedEventArgs e)
         {
