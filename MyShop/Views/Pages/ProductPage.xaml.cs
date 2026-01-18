@@ -231,6 +231,29 @@ namespace MyShop.Views.Pages
             }
         }
 
+        private async void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+        {
+            if (ViewModel.SearchCommand.CanExecute(null))
+            {
+                await ViewModel.SearchCommand.ExecuteAsync(null);
+                UpdateUIState();
+            }
+        }
+
+        private void OnFilterToggleClick(object sender, RoutedEventArgs e)
+        {
+            if (FilterToggleButton.IsChecked == true)
+            {
+                FiltersPanel.Visibility = Visibility.Visible;
+                FilterToggleIcon.Glyph = "\uE70E"; // Chevron Up
+            }
+            else
+            {
+                FiltersPanel.Visibility = Visibility.Collapsed;
+                FilterToggleIcon.Glyph = "\uE70D"; // Chevron Down
+            }
+        }
+
         private async void OnViewProductClick(object sender, RoutedEventArgs e)
         {
             try
