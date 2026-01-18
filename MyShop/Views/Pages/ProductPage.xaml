@@ -295,7 +295,7 @@
                                         <Button Click="OnDeleteProductClick"
                                                Tag="{x:Bind ProductId}"
                                                ToolTipService.ToolTip="Delete Product"
-                                               Visibility="{Binding ElementName=PageRoot, Path=ViewModel.CanDeleteProducts, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                               Visibility="{Binding ElementName=PageRoot, Path=ViewModel.CanDeleteProducts, Mode=OneWay}">
                                             <FontIcon Glyph="&#xE74D;" FontSize="16" Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
                                         </Button>
                                     </StackPanel>

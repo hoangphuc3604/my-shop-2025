@@ -35,6 +35,7 @@ namespace MyShop.Services
                 "READ_CATEGORIES",
                 "CREATE_ORDERS",
                 "READ_ORDERS",
+                "UPDATE_ORDERS",
                 "READ_PROMOTIONS"
             }
         };
