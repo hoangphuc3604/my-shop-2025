@@ -78,6 +78,13 @@
                     Foreground="Red"
                     Text="{Binding ErrorMessage}"
                     TextWrapping="Wrap" />
+
+                <TextBlock
+                    Text="{Binding AppVersion}"
+                    FontSize="10"
+                    Foreground="#999999"
+                    HorizontalAlignment="Center"
+                    Margin="0,20,0,0" />
             </StackPanel>
         </Grid>
     </Grid>

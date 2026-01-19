@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using MyShop.Contracts;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace MyShop.ViewModels;
 
@@ -23,7 +24,7 @@ public partial class LoginViewModel : ObservableObject
     private string _errorMessage = string.Empty;
 
     [ObservableProperty]
-    private string _appVersion = "Version: v1.0.0";
+    private string _appVersion;
 
     [ObservableProperty]
     private bool _isRememberMe;
@@ -33,6 +34,9 @@ public partial class LoginViewModel : ObservableObject
         _accountService = accountService;
         _navigationService = navigationService;
         _sessionService = sessionService;
+
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        AppVersion = $"Version: {version}";
     }
 
     [RelayCommand]
