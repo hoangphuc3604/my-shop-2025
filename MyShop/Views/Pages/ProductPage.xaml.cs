@@ -4,7 +4,6 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using MyShop.Services;
 using MyShop.ViewModels;
-using MyShop.Contracts;
 using MyShop.Views.Dialogs;
 using System;
 using System.Collections.Generic;
@@ -20,11 +19,7 @@ namespace MyShop.Views.Pages
     public sealed partial class ProductPage : Page
     {
         public ProductViewModel ViewModel { get; set; }
-        private ISessionService? _sessionService;
-        private ICategoryService? _categoryService;
-        private IProductService? _productService;
         private OnboardingService _onboardingService;
-        private IAuthorizationService? _authorizationService;
         
         private List<OnboardingStep> _onboardingSteps;
         private int _currentOnboardingStep = 0;
@@ -34,11 +29,7 @@ namespace MyShop.Views.Pages
             this.InitializeComponent();
             var viewModel = App.Services.GetService(typeof(ProductViewModel)) as ProductViewModel;
             ViewModel = viewModel ?? throw new InvalidOperationException("ProductViewModel could not be resolved from services");
-            _sessionService = App.Services.GetService(typeof(ISessionService)) as ISessionService;
-            _categoryService = App.Services.GetService(typeof(ICategoryService)) as ICategoryService;
-            _productService = App.Services.GetService(typeof(IProductService)) as IProductService;
             _onboardingService = (App.Services.GetService(typeof(OnboardingService)) as OnboardingService)!;
-            _authorizationService = App.Services.GetService(typeof(IAuthorizationService)) as IAuthorizationService;
         }
 
         protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -171,8 +162,7 @@ namespace MyShop.Views.Pages
 
         private void UpdateBulkButtonsVisibility()
         {
-            var role = _authorizationService?.GetRole();
-            var isSaleRole = role == "SALE";
+            var isSaleRole = ViewModel.IsSaleRole;
 
             if (FindName("ImportButton") is Button importButton)
             {
@@ -289,7 +279,7 @@ namespace MyShop.Views.Pages
                 {
                     Debug.WriteLine($"[PRODUCT_PAGE] Edit product #{productId}");
                     var product = ViewModel.Products.FirstOrDefault(p => p.ProductId == productId);
-                    if (product != null && _productService != null)
+                    if (product != null)
                     {
                         var dialog = new EditProductDialog();
                         dialog.XamlRoot = this.XamlRoot;
@@ -298,14 +288,11 @@ namespace MyShop.Views.Pages
                         var result = await dialog.ShowAsync();
                         if (result == ContentDialogResult.Primary && dialog.SelectedCategory != null)
                         {
-                            var token = _sessionService?.GetAuthToken();
-                            await _productService.UpdateProductAsync(
+                            await ViewModel.UpdateProductAsync(
                                 dialog.ProductId,
                                 dialog.Sku, dialog.ProductName, dialog.ImportPrice,
                                 dialog.Count, dialog.Description, dialog.Images,
-                                dialog.SelectedCategory.CategoryId, token);
-
-                            await ViewModel.LoadProductsCommand.ExecuteAsync(null);
+                                dialog.SelectedCategory.CategoryId);
                             UpdateUIState();
                         }
                     }
@@ -327,7 +314,7 @@ namespace MyShop.Views.Pages
                 {
                     Debug.WriteLine($"[PRODUCT_PAGE] Delete product #{productId}");
                     var product = ViewModel.Products.FirstOrDefault(p => p.ProductId == productId);
-                    if (product != null && _productService != null)
+                    if (product != null)
                     {
                         var confirmed = await ShowConfirmDialog(
                             "Delete Product",
@@ -335,12 +322,9 @@ namespace MyShop.Views.Pages
 
                         if (confirmed)
                         {
-                            var token = _sessionService?.GetAuthToken();
-                            var success = await _productService.DeleteProductAsync(productId, token);
-
+                            var success = await ViewModel.DeleteProductAsync(productId);
                             if (success)
                             {
-                                await ViewModel.LoadProductsCommand.ExecuteAsync(null);
                                 UpdateUIState();
                             }
                             else
@@ -363,7 +347,6 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Add new product");
-                if (_productService == null) return;
 
                 var dialog = new AddProductDialog();
                 dialog.XamlRoot = this.XamlRoot;
@@ -372,13 +355,10 @@ namespace MyShop.Views.Pages
                 var result = await dialog.ShowAsync();
                 if (result == ContentDialogResult.Primary && dialog.SelectedCategory != null)
                 {
-                    var token = _sessionService?.GetAuthToken();
-                    await _productService.CreateProductAsync(
+                    await ViewModel.CreateProductAsync(
                         dialog.Sku, dialog.ProductName, dialog.ImportPrice,
                         dialog.Count, dialog.Description, dialog.Images,
-                        dialog.SelectedCategory.CategoryId, token);
-
-                    await ViewModel.LoadProductsCommand.ExecuteAsync(null);
+                        dialog.SelectedCategory.CategoryId);
                     UpdateUIState();
                 }
             }
@@ -394,7 +374,6 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Add new category");
-                if (_categoryService == null) return;
 
                 var dialog = new AddCategoryDialog();
                 dialog.XamlRoot = this.XamlRoot;
@@ -402,12 +381,8 @@ namespace MyShop.Views.Pages
                 var result = await dialog.ShowAsync();
                 if (result == ContentDialogResult.Primary)
                 {
-                    var token = _sessionService?.GetAuthToken();
-                    await _categoryService.CreateCategoryAsync(
-                        dialog.CategoryName, dialog.CategoryDescription, token);
-
-                    // Reload categories in ViewModel
-                    await ViewModel.LoadCategoriesCommand.ExecuteAsync(null);
+                    await ViewModel.CreateCategoryAsync(
+                        dialog.CategoryName, dialog.CategoryDescription);
                 }
             }
             catch (Exception ex)
@@ -422,7 +397,6 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Import products");
-                if (_productService == null) return;
 
                 // Create file picker
                 var picker = new FileOpenPicker();
@@ -457,9 +431,8 @@ namespace MyShop.Views.Pages
                 // Show loading
                 await ShowInfoDialog("Importing", $"Importing products from {file.Name}...\n\nPlease wait.");
 
-                // Call import service
-                var token = _sessionService?.GetAuthToken();
-                var result = await _productService.BulkImportProductsAsync(fileBase64, token);
+                // Call ViewModel import method
+                var result = await ViewModel.BulkImportProductsAsync(fileBase64);
 
                 // Show result
                 var resultMessage = $"Import completed!\n\n" +
@@ -480,9 +453,6 @@ namespace MyShop.Views.Pages
                 }
 
                 await ShowInfoDialog("Import Result", resultMessage);
-
-                // Reload products
-                await ViewModel.LoadProductsCommand.ExecuteAsync(null);
                 UpdateUIState();
             }
             catch (Exception ex)
@@ -497,10 +467,8 @@ namespace MyShop.Views.Pages
             try
             {
                 Debug.WriteLine("[PRODUCT_PAGE] Download template");
-                if (_productService == null) return;
 
-                var token = _sessionService?.GetAuthToken();
-                var template = await _productService.DownloadTemplateAsync(token);
+                var template = await ViewModel.DownloadTemplateAsync();
 
                 if (template == null)
                 {

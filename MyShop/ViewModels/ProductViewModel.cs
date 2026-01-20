@@ -102,6 +102,9 @@ namespace MyShop.ViewModels
         [ObservableProperty]
         private bool _canCreateCategories;
 
+        [ObservableProperty]
+        private bool _isSaleRole;
+
         public ProductViewModel(
             IProductService productService,
             ICategoryService categoryService,
@@ -123,6 +126,7 @@ namespace MyShop.ViewModels
             CanUpdateProducts = _authorizationService.HasPermission("UPDATE_PRODUCTS");
             CanDeleteProducts = _authorizationService.HasPermission("DELETE_PRODUCTS");
             CanCreateCategories = _authorizationService.HasPermission("CREATE_CATEGORIES");
+            IsSaleRole = _authorizationService.GetRole() == "SALE";
         }
 
         /// <summary>
@@ -341,6 +345,122 @@ namespace MyShop.ViewModels
         private async Task RefreshAsync()
         {
             await LoadProductsAsync();
+        }
+
+        /// <summary>
+        /// Create a new product
+        /// </summary>
+        public async Task<bool> CreateProductAsync(
+            string sku, string name, int importPrice, int count,
+            string? description, List<ProductImageInput> images, int categoryId)
+        {
+            try
+            {
+                var token = _sessionService.GetAuthToken();
+                var result = await _productService.CreateProductAsync(
+                    sku, name, importPrice, count, description, images, categoryId, token);
+                
+                if (result != null)
+                {
+                    await LoadProductsAsync();
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT_VM] Error creating product: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Update an existing product
+        /// </summary>
+        public async Task<bool> UpdateProductAsync(
+            int productId, string sku, string name, int importPrice, int count,
+            string? description, List<ProductImageInput> images, int categoryId)
+        {
+            try
+            {
+                var token = _sessionService.GetAuthToken();
+                var result = await _productService.UpdateProductAsync(
+                    productId, sku, name, importPrice, count, description, images, categoryId, token);
+                
+                if (result != null)
+                {
+                    await LoadProductsAsync();
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT_VM] Error updating product: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Delete a product
+        /// </summary>
+        public async Task<bool> DeleteProductAsync(int productId)
+        {
+            try
+            {
+                var token = _sessionService.GetAuthToken();
+                var success = await _productService.DeleteProductAsync(productId, token);
+                
+                if (success)
+                {
+                    await LoadProductsAsync();
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT_VM] Error deleting product: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Create a new category
+        /// </summary>
+        public async Task<bool> CreateCategoryAsync(string name, string? description)
+        {
+            try
+            {
+                var token = _sessionService.GetAuthToken();
+                await _categoryService.CreateCategoryAsync(name, description, token);
+                await LoadCategoriesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PRODUCT_VM] Error creating category: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Bulk import products from Excel
+        /// </summary>
+        public async Task<BulkImportResult> BulkImportProductsAsync(string fileBase64)
+        {
+            var token = _sessionService.GetAuthToken();
+            var result = await _productService.BulkImportProductsAsync(fileBase64, token);
+            await LoadProductsAsync();
+            return result;
+        }
+
+        /// <summary>
+        /// Download Excel template
+        /// </summary>
+        public async Task<TemplateFile?> DownloadTemplateAsync()
+        {
+            var token = _sessionService.GetAuthToken();
+            return await _productService.DownloadTemplateAsync(token);
         }
 
         /// <summary>
